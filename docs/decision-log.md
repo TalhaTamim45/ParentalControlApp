@@ -26,3 +26,8 @@
 ## ADR-005: Platform-Independent Preliminary Schemas
 - **Decision**: Maintain JSON Schemas in `shared/schemas/` without hardcoding disconnected Kotlin/JS source files in `shared/` until networking phase.
 - **Reason**: Keeps repository modular and avoids non-compilable cross-language files in shared directories.
+
+## ADR-006: Dynamic Gradle Build Date & BuildConfig Metadata Strategy
+- **Decision**: Use standard AGP-generated `BuildConfig.VERSION_NAME` and `BuildConfig.BUILD_TYPE`. Inject custom `BUILD_DATE` via Gradle `providers.provider {}` lazy evaluation.
+- **Reason**: Avoids redundant `buildConfigField` duplication while preserving Gradle configuration cache performance.
+- **Alternatives Considered**: Hardcoded build date strings in `UiState.kt`.
