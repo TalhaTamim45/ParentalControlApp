@@ -6,6 +6,10 @@ plugins {
     alias(libs.plugins.hilt.android)
 }
 
+val buildDate = providers.provider {
+    java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(java.util.Date())
+}
+
 android {
     namespace = "com.parental.child"
     compileSdk = 36
@@ -23,6 +27,8 @@ android {
         }
 
         buildConfigField("String", "SERVER_BASE_URL", "\"http://localhost:4000\"")
+        buildConfigField("String", "ENVIRONMENT", "\"Development / Standby\"")
+        buildConfigField("String", "BUILD_DATE", "\"${buildDate.get()}\"")
     }
 
     buildTypes {
