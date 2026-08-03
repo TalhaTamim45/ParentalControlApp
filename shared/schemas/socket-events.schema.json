@@ -1,0 +1,13 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SocketEvents",
+  "description": "WebSocket event names for ParentalControlApp signaling",
+  "type": "object",
+  "properties": {
+    "INITIAL_STATE": { "type": "string", "const": "initial_state" },
+    "PARENT_COMMAND_LOCK": { "type": "string", "const": "parent_command_lock" },
+    "CHILD_COMMAND_LOCK": { "type": "string", "const": "child_command_lock" },
+    "DEVICE_STATUS_UPDATE": { "type": "string", "const": "device_status_update" }
+  },
+  "required": ["INITIAL_STATE", "PARENT_COMMAND_LOCK", "CHILD_COMMAND_LOCK", "DEVICE_STATUS_UPDATE"]
+}

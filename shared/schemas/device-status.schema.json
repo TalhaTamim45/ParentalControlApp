@@ -1,0 +1,14 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DeviceStatus",
+  "type": "object",
+  "properties": {
+    "id": { "type": "string" },
+    "name": { "type": "string" },
+    "online": { "type": "boolean" },
+    "battery": { "type": "integer", "minimum": 0, "maximum": 100 },
+    "charging": { "type": "boolean" },
+    "locked": { "type": "boolean" }
+  },
+  "required": ["id", "name", "online", "battery", "locked"]
+}
