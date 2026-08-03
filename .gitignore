@@ -1,0 +1,28 @@
+# Node & NPM
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Parent Dashboard Build Output
+parent-dashboard/dist/
+parent-dashboard/.vite/
+
+# Database Persistence
+backend-server/db.json
+
+# Android Build & Gradle Outputs
+.gradle/
+build/
+app/build/
+*.apk
+*.aar
+*.keystore
+*.jks
+
+# IDE & OS Files
+.idea/
+*.iml
+.DS_Store
+Thumbs.db
+*.log
