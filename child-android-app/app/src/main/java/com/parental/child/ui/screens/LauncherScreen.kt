@@ -2,11 +2,14 @@ package com.parental.child.ui.screens
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
@@ -44,15 +47,41 @@ fun LauncherScreen(uiState: LauncherUiState) {
 
             Spacer(modifier = Modifier.height(8.dp))
 
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                AssistChip(
+                    onClick = { },
+                    label = { Text("v${uiState.version}") }
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                AssistChip(
+                    onClick = { },
+                    label = { Text(uiState.buildType.uppercase()) }
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
             Text(
-                text = uiState.environmentName,
+                text = "Environment: ${uiState.environment}",
                 fontSize = 14.sp,
                 color = MaterialTheme.colorScheme.secondary,
                 textAlign = TextAlign.Center
             )
 
+            Spacer(modifier = Modifier.height(4.dp))
+
+            Text(
+                text = "Build Date: ${uiState.buildDate}",
+                fontSize = 12.sp,
+                color = MaterialTheme.colorScheme.outline,
+                textAlign = TextAlign.Center
+            )
+
             Spacer(modifier = Modifier.height(32.dp))
 
+            // Connection Status Placeholder Card
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
@@ -78,6 +107,7 @@ fun LauncherScreen(uiState: LauncherUiState) {
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            // Protection Status Placeholder Card
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
@@ -100,15 +130,6 @@ fun LauncherScreen(uiState: LauncherUiState) {
                     )
                 }
             }
-
-            Spacer(modifier = Modifier.height(32.dp))
-
-            Text(
-                text = uiState.buildInfo,
-                fontSize = 12.sp,
-                color = MaterialTheme.colorScheme.outline,
-                textAlign = TextAlign.Center
-            )
         }
     }
 }
