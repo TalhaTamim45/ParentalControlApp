@@ -28,8 +28,9 @@ android {
             useSupportLibrary = true
         }
 
-        buildConfigField("String", "SERVER_BASE_URL", "\"http://localhost:4000\"")
-        buildConfigField("String", "ENVIRONMENT", "\"Development / Standby\"")
+        val devServerUrl = project.findProperty("SERVER_BASE_URL") as String? ?: "http://10.0.2.2:4000"
+        buildConfigField("String", "SERVER_BASE_URL", "\"$devServerUrl\"")
+        buildConfigField("String", "ENVIRONMENT", "\"Development / Active Pairing\"")
         buildConfigField("String", "BUILD_DATE", "\"${buildDate.get()}\"")
     }
 
@@ -57,6 +58,8 @@ android {
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            excludes += "/META-INF/INDEX.LIST"
+            excludes += "/META-INF/io.netty.versions.properties"
         }
     }
 }
@@ -79,4 +82,6 @@ dependencies {
     implementation(libs.hilt.navigation.compose)
 
     implementation(libs.timber)
+    implementation(libs.okhttp)
+    implementation(libs.socket.io.client)
 }

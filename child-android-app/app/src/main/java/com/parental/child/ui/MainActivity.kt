@@ -6,7 +6,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import com.parental.child.ui.screens.LauncherScreen
+import com.parental.child.ui.screens.PairingScreen
 import com.parental.child.ui.theme.ChildAppTheme
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -20,7 +20,14 @@ class MainActivity : ComponentActivity() {
         setContent {
             ChildAppTheme {
                 val uiState by viewModel.uiState.collectAsState()
-                LauncherScreen(uiState = uiState)
+                PairingScreen(
+                    uiState = uiState,
+                    onDeviceNameChanged = viewModel::onDeviceNameChanged,
+                    onPairingCodeChanged = viewModel::onPairingCodeChanged,
+                    onServerUrlChanged = viewModel::onServerUrlChanged,
+                    onPairClicked = viewModel::pairDevice,
+                    onUnpairClicked = viewModel::unpairDevice
+                )
             }
         }
     }

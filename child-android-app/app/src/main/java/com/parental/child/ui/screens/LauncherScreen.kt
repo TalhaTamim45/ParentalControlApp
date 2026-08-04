@@ -125,7 +125,7 @@ fun LauncherScreen(uiState: LauncherUiState) {
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = uiState.protectionStatus,
+                        text = if (uiState.isPaired) "Paired & Active" else "Not Paired",
                         style = MaterialTheme.typography.bodyMedium
                     )
                 }
