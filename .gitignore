@@ -11,7 +11,8 @@ parent-dashboard/.vite/
 # Database Persistence
 backend-server/db.json
 
-# Android Build & Gradle Outputs
+# Android Build & Local Settings
+local.properties
 .gradle/
 build/
 app/build/

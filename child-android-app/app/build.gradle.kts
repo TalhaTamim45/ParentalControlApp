@@ -1,13 +1,15 @@
+import java.text.SimpleDateFormat
+import java.util.Date
+
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt.android)
 }
 
 val buildDate = providers.provider {
-    java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(java.util.Date())
+    SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(Date())
 }
 
 android {
@@ -47,9 +49,6 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
-    }
-    kotlinOptions {
-        jvmTarget = "17"
     }
     buildFeatures {
         compose = true
