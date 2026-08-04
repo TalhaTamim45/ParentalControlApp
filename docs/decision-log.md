@@ -3,31 +3,39 @@
 ## ADR-001: Target Android API 36 (Android 16) Specification
 - **Decision**: Set `compileSdk = 36`, `targetSdk = 36`, `minSdk = 26`.
 - **Reason**: Play Store policy mandates targeting API 36 for new apps and updates. minSdk 26 preserves compatibility back to Android 8.0 Oreo while supporting modern notification channels and background execution rules.
-- **Alternatives Considered**: Target API 34.
-- **Trade-offs**: Requires AGP 9.2.x build tools compatibility.
 
 ## ADR-002: Android Build Tooling (AGP 9.2.1 & Gradle 9.4.1)
 - **Decision**: Adopt AGP 9.2.1 with Gradle 9.4.1 and Kotlin 2.1.0.
 - **Reason**: Ensures native Kotlin compiler support and seamless API 36 compilation.
-- **Alternatives Considered**: AGP 8.5.2 / Gradle 8.5 (Outdated for 2026 baseline).
-- **Trade-offs**: Requires JDK 17 target compatibility.
 
 ## ADR-003: Jetpack Compose for UI
 - **Decision**: Use Jetpack Compose with Kotlin Compose plugin (`org.jetbrains.kotlin.plugin.compose`) and Compose BOM 2026.04.01.
 - **Reason**: Declarative UI layout eliminates XML layout duplication and boilerplate code.
-- **Alternatives Considered**: Traditional XML layout files.
-- **Trade-offs**: Requires Kotlin 2.x compose compiler integration.
 
 ## ADR-004: Version Catalog (`libs.versions.toml`)
 - **Decision**: Centralize all Gradle dependency and plugin versions in `gradle/libs.versions.toml`.
-- **Reason**: Prevents version fragmentation and enforces single-source-of-truth version management across root and module build scripts.
-- **Alternatives Considered**: Hardcoded string dependencies in `build.gradle.kts`.
+- **Reason**: Prevents version fragmentation and enforces single-source-of-truth version management.
 
-## ADR-005: Platform-Independent Preliminary Schemas
-- **Decision**: Maintain JSON Schemas in `shared/schemas/` without hardcoding disconnected Kotlin/JS source files in `shared/` until networking phase.
-- **Reason**: Keeps repository modular and avoids non-compilable cross-language files in shared directories.
+## ADR-005: Parent Authentication Layer
+- **Decision**: Authenticate parent dashboard sessions using environment credentials (`PARENT_USERNAME`, `PARENT_PASSWORD`).
+- **Reason**: Ensures parent endpoints (`/api/pairing/generate`, `/api/devices`, etc.) cannot be accessed publicly while avoiding committed secrets.
 
-## ADR-006: Dynamic Gradle Build Date & BuildConfig Metadata Strategy
-- **Decision**: Use standard AGP-generated `BuildConfig.VERSION_NAME` and `BuildConfig.BUILD_TYPE`. Inject custom `BUILD_DATE` via Gradle `providers.provider {}` lazy evaluation.
-- **Reason**: Avoids redundant `buildConfigField` duplication while preserving Gradle configuration cache performance.
-- **Alternatives Considered**: Hardcoded build date strings in `UiState.kt`.
+## ADR-006: One-Time Temporary Pairing Code Security
+- **Decision**: Generate 6-digit numeric pairing codes with `crypto.randomInt`. Store ONLY SHA-256 code hashes in memory with 10-minute expiration.
+- **Reason**: Plain code is returned once to parent. Storing hashes prevents plain-text exposure in memory dumps. Single-use enforcement invalidates codes upon validation.
+
+## ADR-007: Token-Hashed Device Identity & Revocation
+- **Decision**: Return a 256-bit raw token once to child upon pairing. Backend stores ONLY `tokenHash` (`sha256(rawToken)`) in `db.json`. Compare tokens using constant-time `safeCompare` (`crypto.timingSafeEqual`).
+- **Reason**: Raw tokens are never stored in persistence files (`db.json`) or server logs. Revocation (`revokedAt = timestamp`) invalidates tokens immediately.
+
+## ADR-008: Direct Android KeyStore Encryption for Credentials
+- **Decision**: Encrypt device token on Android using direct `AndroidKeyStore` AES-256-GCM (`KeystoreManager.kt`) rather than deprecated EncryptedSharedPreferences.
+- **Reason**: Deprecated EncryptedSharedPreferences and MasterKey APIs are avoided. Direct KeyStore provides robust hardware-backed credential protection. Set `android:allowBackup="false"` to prevent credential leakage in backups.
+
+## ADR-009: Separate Socket Authentication Roles
+- **Decision**: Enforce distinct socket authorization roles: `parent` (validated via parent session token) and `child` (validated via device token hash).
+- **Reason**: Prevents child sockets from subscribing to parent administrative events or parent sockets from impersonating child devices.
+
+## ADR-010: Truthful Dynamic Presence Calculation
+- **Decision**: Compute device `online` presence dynamically based on active socket connection state OR `lastSeen` window (<90 seconds).
+- **Reason**: Avoids storing a misleading permanent `online: true` field in `db.json`. Heartbeat coordinator runs while app process is active (~45s interval).
