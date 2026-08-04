@@ -1,5 +1,5 @@
 import React from 'react';
-import { Battery, BatteryCharging, ShieldAlert, Lock, Unlock, Smartphone, Wifi } from 'lucide-react';
+import { Battery, BatteryCharging, ShieldAlert, Lock, Unlock, Smartphone, Wifi, LogOut } from 'lucide-react';
 
 interface HeaderProps {
   deviceName: string;
@@ -8,6 +8,7 @@ interface HeaderProps {
   charging: boolean;
   locked: boolean;
   onToggleLock: () => void;
+  onLogout?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -17,6 +18,7 @@ export const Header: React.FC<HeaderProps> = ({
   charging,
   locked,
   onToggleLock,
+  onLogout,
 }) => {
   return (
     <header className="glass-panel sticky top-0 z-50 px-6 py-4 border-b border-slate-800 flex flex-wrap items-center justify-between gap-4">
@@ -39,8 +41,8 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
       </div>
 
-      {/* Device Health Status */}
-      <div className="flex items-center gap-4 text-sm">
+      {/* Device Health Status & Controls */}
+      <div className="flex items-center gap-3 text-sm">
         {/* Connection Status */}
         <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-900/80 border border-slate-800">
           <Wifi className={`w-4 h-4 ${online ? 'text-emerald-400 animate-pulse' : 'text-slate-500'}`} />
@@ -59,7 +61,7 @@ export const Header: React.FC<HeaderProps> = ({
           <span className="text-xs font-semibold text-slate-200">{battery}%</span>
         </div>
 
-        {/* Instant Emergency Lock Phone Toggle */}
+        {/* Emergency Lock Phone Toggle */}
         <button
           onClick={onToggleLock}
           className={`flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm transition-all duration-200 shadow-lg ${
@@ -71,6 +73,17 @@ export const Header: React.FC<HeaderProps> = ({
           {locked ? <Lock className="w-4 h-4" /> : <Unlock className="w-4 h-4" />}
           <span>{locked ? 'PHONE LOCKED' : 'LOCK PHONE NOW'}</span>
         </button>
+
+        {/* Logout Button */}
+        {onLogout && (
+          <button
+            onClick={onLogout}
+            title="Log Out"
+            className="p-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-400 hover:text-white transition"
+          >
+            <LogOut className="w-4 h-4" />
+          </button>
+        )}
       </div>
     </header>
   );
