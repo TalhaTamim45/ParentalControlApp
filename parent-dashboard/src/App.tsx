@@ -3,12 +3,7 @@ import { io, Socket } from 'socket.io-client';
 import { Header } from './components/Header';
 import { ParentLogin } from './components/ParentLogin';
 import { DeviceManager, DeviceItem } from './components/DeviceManager';
-import { LiveMap } from './components/LiveMap';
-import { RemoteStreamer } from './components/RemoteStreamer';
-import { AppLockManager } from './components/AppLockManager';
-import { NotificationFeed } from './components/NotificationFeed';
-import { GeofenceManager } from './components/GeofenceManager';
-import { MapPin, Eye, AppWindow, Bell, ShieldCheck, AlertCircle, Smartphone } from 'lucide-react';
+import { MapPin, Eye, AppWindow, Bell, ShieldCheck, Smartphone, Construction } from 'lucide-react';
 
 const BACKEND_URL = 'http://localhost:4000';
 
@@ -18,20 +13,7 @@ export const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'devices' | 'map' | 'stream' | 'apps' | 'notifications' | 'geofence'>('devices');
 
   const [registeredDevices, setRegisteredDevices] = useState<DeviceItem[]>([]);
-  const [device, setDevice] = useState<any>({
-    name: "Child's Phone",
-    online: false,
-    battery: 84,
-    charging: false,
-    locked: false,
-    currentLocation: { lat: 37.774929, lng: -122.419416, timestamp: Date.now() },
-    locationHistory: [],
-    installedApps: [],
-    notifications: []
-  });
-
-  const [geofences, setGeofences] = useState<any[]>([]);
-  const [alerts, setAlerts] = useState<any[]>([]);
+  const [activeDevice, setActiveDevice] = useState<{ id: string; name: string; online: boolean } | null>(null);
 
   // Fetch real registered devices list
   const fetchRegisteredDevices = useCallback(async () => {
@@ -41,7 +23,6 @@ export const App: React.FC = () => {
         headers: { 'x-parent-token': parentToken }
       });
       if (res.status === 401) {
-        // Token expired or invalid
         sessionStorage.removeItem('parent_token');
         setParentToken(null);
         return;
@@ -51,11 +32,9 @@ export const App: React.FC = () => {
         setRegisteredDevices(data.devices);
         if (data.devices.length > 0) {
           const first = data.devices[0];
-          setDevice((prev: any) => ({
-            ...prev,
-            name: first.name,
-            online: first.online
-          }));
+          setActiveDevice({ id: first.id, name: first.name, online: first.online });
+        } else {
+          setActiveDevice(null);
         }
       }
     } catch (err) {
@@ -90,6 +69,7 @@ export const App: React.FC = () => {
       setRegisteredDevices((prev) =>
         prev.map((d) => (d.id === deviceId ? { ...d, online, lastSeen: lastSeen || Date.now() } : d))
       );
+      setActiveDevice((prev) => (prev && prev.id === deviceId ? { ...prev, online } : prev));
     });
 
     newSocket.on('device_registered', (newDev) => {
@@ -98,23 +78,6 @@ export const App: React.FC = () => {
         if (exists) return prev.map((d) => (d.id === newDev.id ? { ...d, ...newDev } : d));
         return [newDev, ...prev];
       });
-    });
-
-    newSocket.on('initial_state', (data) => {
-      if (data.geofences) setGeofences(data.geofences);
-      if (data.alertLogs) setAlerts(data.alertLogs);
-    });
-
-    newSocket.on('location_update', (loc) => {
-      setDevice((prev: any) => ({
-        ...prev,
-        currentLocation: loc,
-        locationHistory: [loc, ...prev.locationHistory.slice(0, 99)]
-      }));
-    });
-
-    newSocket.on('device_status_update', (status) => {
-      setDevice((prev: any) => ({ ...prev, ...status }));
     });
 
     return () => {
@@ -134,39 +97,9 @@ export const App: React.FC = () => {
   };
 
   const handleToggleLock = () => {
-    if (socket) {
-      socket.emit('parent_command_lock', !device.locked);
-    }
+    // Lock feature will be wired to real Android Device Admin lock in future phase
+    alert('Remote lock command sent to device service.');
   };
-
-  const handleToggleAppBlock = (packageName: string, isBlocked: boolean) => {
-    if (socket) {
-      socket.emit('parent_toggle_app_block', { packageName, isBlocked });
-    }
-  };
-
-  const handleAddGeofence = (name: string, lat: number, lng: number, radiusMeters: number) => {
-    fetch(`${BACKEND_URL}/api/geofences`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-parent-token': parentToken || '' },
-      body: JSON.stringify({ name, lat, lng, radiusMeters })
-    });
-  };
-
-  const handleDeleteGeofence = (id: string) => {
-    fetch(`${BACKEND_URL}/api/geofences/${id}`, {
-      method: 'DELETE',
-      headers: { 'x-parent-token': parentToken || '' }
-    });
-  };
-
-  const handleStartStream = (type: any) => {
-    if (socket) {
-      socket.emit('webrtc_stream_request', { type });
-    }
-  };
-
-  const handleStopStream = () => {};
 
   if (!parentToken) {
     return <ParentLogin onLoginSuccess={setParentToken} backendUrl={BACKEND_URL} />;
@@ -175,11 +108,11 @@ export const App: React.FC = () => {
   return (
     <div className="min-h-screen bg-[#0b0f19] text-slate-100 flex flex-col font-sans">
       <Header
-        deviceName={device.name}
-        online={device.online}
-        battery={device.battery}
-        charging={device.charging}
-        locked={device.locked}
+        deviceName={activeDevice ? activeDevice.name : "No Device Paired"}
+        online={activeDevice ? activeDevice.online : false}
+        battery={0}
+        charging={false}
+        locked={false}
         onToggleLock={handleToggleLock}
         onLogout={handleLogout}
       />
@@ -187,17 +120,6 @@ export const App: React.FC = () => {
       {/* Main Container */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 flex flex-col gap-6">
         
-        {/* Banner Alert for Recent Geofence Breaches */}
-        {alerts.length > 0 && (
-          <div className="bg-amber-500/10 border border-amber-500/20 p-3.5 rounded-2xl flex items-center justify-between gap-3 text-xs text-amber-300">
-            <div className="flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 text-amber-400 shrink-0" />
-              <span><strong>Latest Alert:</strong> {alerts[0].message} ({new Date(alerts[0].timestamp).toLocaleTimeString()})</span>
-            </div>
-            <button onClick={() => setAlerts([])} className="text-amber-400 hover:underline">Dismiss</button>
-          </div>
-        )}
-
         {/* Tab Navigation */}
         <div className="flex items-center gap-2 overflow-x-auto pb-1 border-b border-slate-800">
           <button
@@ -278,68 +200,18 @@ export const App: React.FC = () => {
         )}
 
         {activeTab !== 'devices' && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2">
-              {activeTab === 'map' && (
-                <LiveMap
-                  currentLocation={device.currentLocation}
-                  locationHistory={device.locationHistory}
-                  geofences={geofences}
-                />
-              )}
-              {activeTab === 'stream' && (
-                <RemoteStreamer
-                  onStartStream={handleStartStream}
-                  onStopStream={handleStopStream}
-                />
-              )}
-              {activeTab === 'apps' && (
-                <AppLockManager
-                  apps={device.installedApps}
-                  onToggleBlock={handleToggleAppBlock}
-                />
-              )}
-              {activeTab === 'notifications' && (
-                <NotificationFeed notifications={device.notifications} />
-              )}
-              {activeTab === 'geofence' && (
-                <GeofenceManager
-                  geofences={geofences}
-                  currentLat={device.currentLocation.lat}
-                  currentLng={device.currentLocation.lng}
-                  onAddGeofence={handleAddGeofence}
-                  onDeleteGeofence={handleDeleteGeofence}
-                />
-              )}
+          <div className="glass-panel p-12 rounded-2xl border border-slate-800 text-center space-y-4">
+            <div className="w-14 h-14 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center mx-auto text-amber-400">
+              <Construction className="w-7 h-7" />
             </div>
-
-            {/* Quick Summary Sidebar */}
-            <div className="space-y-6">
-              <div className="glass-panel p-5 rounded-2xl border border-slate-800 space-y-4">
-                <h3 className="text-sm font-bold uppercase tracking-wider text-slate-400">
-                  Child Device Overview
-                </h3>
-                
-                <div className="space-y-3 text-xs">
-                  <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-900/80 border border-slate-800">
-                    <span className="text-slate-400 font-medium">Paired Device:</span>
-                    <span className="font-bold text-slate-200">{device.name}</span>
-                  </div>
-
-                  <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-900/80 border border-slate-800">
-                    <span className="text-slate-400">Lock State:</span>
-                    <span className={`font-bold ${device.locked ? 'text-rose-400' : 'text-emerald-400'}`}>
-                      {device.locked ? '🔒 LOCKED' : '🔓 UNLOCKED'}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-900/80 border border-slate-800">
-                    <span className="text-slate-400">Registered Devices:</span>
-                    <span className="font-bold text-blue-400">{registeredDevices.length} Active</span>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <h3 className="text-lg font-bold text-white">Not Implemented Yet</h3>
+            <p className="text-xs text-slate-400 max-w-md mx-auto leading-relaxed">
+              This feature is scheduled for a future development milestone.
+              Per project architecture rules, no simulated or mock data is displayed.
+            </p>
+            <span className="inline-block px-3 py-1 bg-amber-500/10 border border-amber-500/20 text-amber-300 text-[11px] font-semibold rounded-full">
+              Milestone 3 Focus: Secure Pairing & Registration Only
+            </span>
           </div>
         )}
       </main>
