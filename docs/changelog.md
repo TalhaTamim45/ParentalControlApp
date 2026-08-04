@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.4.0] - Milestone 4: Real Internet Deployment for Different-City Operation (Phase 1)
+
+### Added
+- **Tailscale Funnel Public HTTPS Integration**: Configured Tailscale Funnel on Windows PC server exposing permanent public HTTPS domain `https://nemo.tail7499c7.ts.net`.
+- **Unified Node.js Server Architecture**: Refactored `backend-server/server.js` to serve Parent Dashboard static SPA build (`parent-dashboard/dist`) at `/`, REST API under `/api`, and Socket.io under `/socket.io` on port 4000.
+- **PostgreSQL Database Integration**: Integrated Node `pg` pool (`dbPool.js`), schema migration (`001_init_schema.sql`), and parameterized queries for parent accounts, registered devices, and audit logs.
+- **Bcrypt Password Security**: Integrated `bcryptjs` password hashing for parent accounts.
+- **Android Public Production Configuration**: Configured Android app for public HTTPS domain (`https://nemo.tail7499c7.ts.net`), enforcing strict HTTPS (`cleartextTrafficPermitted="false"`), and automatic exponential backoff reconnection over mobile data.
+- **Public End-to-End Verification**: Executed real end-to-end verification over public HTTPS and mobile data (Samsung Galaxy A12).
+
+---
+
 ## [1.3.0] - Milestone 3: Secure Device Pairing & Registration (Phase 1)
 
 ### Added

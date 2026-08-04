@@ -21,13 +21,13 @@ function requireParentAuth(req, res, next) {
   next();
 }
 
-function requireDeviceAuth(req, res, next) {
+async function requireDeviceAuth(req, res, next) {
   const token = extractToken(req, 'x-device-token');
   if (!token) {
     return res.status(401).json({ success: false, error: 'Authentication token missing' });
   }
 
-  const device = deviceService.authenticateDeviceToken(token);
+  const device = await deviceService.authenticateDeviceToken(token);
   if (!device) {
     return res.status(401).json({ success: false, error: 'Invalid or revoked device token' });
   }

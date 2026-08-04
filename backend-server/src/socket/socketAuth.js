@@ -1,8 +1,7 @@
 const parentAuthService = require('../services/parentAuthService');
 const deviceService = require('../services/deviceService');
-const presenceService = require('../services/presenceService');
 
-function socketAuthenticate(socket, next) {
+async function socketAuthenticate(socket, next) {
   const auth = socket.handshake.auth || {};
   const token = auth.token || socket.handshake.query?.token;
   const role = auth.role || socket.handshake.query?.role;
@@ -16,7 +15,7 @@ function socketAuthenticate(socket, next) {
   }
 
   if (role === 'child' || (!role && token)) {
-    const device = deviceService.authenticateDeviceToken(token);
+    const device = await deviceService.authenticateDeviceToken(token);
     if (!device) {
       return next(new Error('Unauthorized child device socket connection'));
     }

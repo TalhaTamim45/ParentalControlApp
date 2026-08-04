@@ -25,8 +25,8 @@
 - **Reason**: Plain code is returned once to parent. Storing hashes prevents plain-text exposure in memory dumps. Single-use enforcement invalidates codes upon validation.
 
 ## ADR-007: Token-Hashed Device Identity & Revocation
-- **Decision**: Return a 256-bit raw token once to child upon pairing. Backend stores ONLY `tokenHash` (`sha256(rawToken)`) in `db.json`. Compare tokens using constant-time `safeCompare` (`crypto.timingSafeEqual`).
-- **Reason**: Raw tokens are never stored in persistence files (`db.json`) or server logs. Revocation (`revokedAt = timestamp`) invalidates tokens immediately.
+- **Decision**: Return a 256-bit raw token once to child upon pairing. Backend stores ONLY `tokenHash` (`sha256(rawToken)`) in persistence storage. Compare tokens using constant-time `safeCompare` (`crypto.timingSafeEqual`).
+- **Reason**: Raw tokens are never stored in persistence files or server logs. Revocation (`revokedAt = timestamp`) invalidates tokens immediately.
 
 ## ADR-008: Direct Android KeyStore Encryption for Credentials
 - **Decision**: Encrypt device token on Android using direct `AndroidKeyStore` AES-256-GCM (`KeystoreManager.kt`) rather than deprecated EncryptedSharedPreferences.
@@ -38,4 +38,12 @@
 
 ## ADR-010: Truthful Dynamic Presence Calculation
 - **Decision**: Compute device `online` presence dynamically based on active socket connection state OR `lastSeen` window (<90 seconds).
-- **Reason**: Avoids storing a misleading permanent `online: true` field in `db.json`. Heartbeat coordinator runs while app process is active (~45s interval).
+- **Reason**: Avoids storing a misleading permanent `online: true` field in persistence. Heartbeat coordinator runs while app process is active (~45s interval).
+
+## ADR-011: Unified Node.js Server & Static SPA Proxying
+- **Decision**: Serve the Parent Dashboard static SPA build (`parent-dashboard/dist`) directly at `/` from the Node.js backend server (`server.js`), alongside `/api` REST routes and `/socket.io` WebSockets.
+- **Reason**: Eliminates multi-origin CORS complexities and allows a single port (4000) to be exposed securely via Tailscale Funnel.
+
+## ADR-012: Tailscale Funnel Public Internet Routing
+- **Decision**: Adopt Tailscale Funnel to assign a stable, permanent public HTTPS domain (`https://<windows-node>.<tailnet>.ts.net`) to the Windows PC server.
+- **Reason**: Provides zero-cost, encrypted HTTPS and WSS access across different cities over public mobile data without router port forwarding, mock servers, or unstable temporary URLs.

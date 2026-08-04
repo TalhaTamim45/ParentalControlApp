@@ -16,7 +16,7 @@ router.post('/generate', requireParentAuth, generateLimiter, (req, res) => {
 });
 
 // Validate Pairing Code & Register Device Identity (Child application)
-router.post('/validate', validateLimiter, (req, res) => {
+router.post('/validate', validateLimiter, async (req, res) => {
   const { code, deviceName } = req.body || {};
 
   if (!code || String(code).trim().length !== 6) {
@@ -28,7 +28,7 @@ router.post('/validate', validateLimiter, (req, res) => {
     return res.status(400).json({ success: false, error: validation.error });
   }
 
-  const registration = deviceService.registerDevice(deviceName);
+  const registration = await deviceService.registerDevice(deviceName);
 
   // Notify active parent sockets if io is attached
   if (req.io) {

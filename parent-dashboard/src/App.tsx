@@ -5,7 +5,7 @@ import { ParentLogin } from './components/ParentLogin';
 import { DeviceManager, DeviceItem } from './components/DeviceManager';
 import { MapPin, Eye, AppWindow, Bell, ShieldCheck, Smartphone, Construction } from 'lucide-react';
 
-const BACKEND_URL = 'http://localhost:4000';
+const BACKEND_URL = (import.meta as any).env?.VITE_BACKEND_URL || window.location.origin;
 
 export const App: React.FC = () => {
   const [parentToken, setParentToken] = useState<string | null>(() => sessionStorage.getItem('parent_token'));

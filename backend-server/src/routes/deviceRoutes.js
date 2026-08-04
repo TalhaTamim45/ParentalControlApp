@@ -5,16 +5,16 @@ const presenceService = require('../services/presenceService');
 const { requireParentAuth, requireDeviceAuth } = require('../middleware/authMiddleware');
 
 // Get Real Registered Devices (Parent Authenticated)
-router.get('/', requireParentAuth, (req, res) => {
-  const rawDevices = deviceService.getAllRegisteredDevices();
+router.get('/', requireParentAuth, async (req, res) => {
+  const rawDevices = await deviceService.getAllRegisteredDevices();
   const devices = rawDevices.map(d => presenceService.formatDeviceWithPresence(d));
   res.json({ success: true, devices });
 });
 
 // Device Heartbeat (Child Device Authenticated)
-router.post('/heartbeat', requireDeviceAuth, (req, res) => {
+router.post('/heartbeat', requireDeviceAuth, async (req, res) => {
   const device = req.device;
-  deviceService.updateLastSeen(device.id);
+  await deviceService.updateLastSeen(device.id);
 
   if (req.io) {
     req.io.to('parent_room').emit('device_presence_changed', {
@@ -28,9 +28,9 @@ router.post('/heartbeat', requireDeviceAuth, (req, res) => {
 });
 
 // Unpair / Revoke Device (Parent Authenticated)
-router.post('/:id/unpair', requireParentAuth, (req, res) => {
+router.post('/:id/unpair', requireParentAuth, async (req, res) => {
   const deviceId = req.params.id;
-  const revoked = deviceService.revokeDevice(deviceId);
+  const revoked = await deviceService.revokeDevice(deviceId);
 
   if (!revoked) {
     return res.status(404).json({ success: false, error: 'Device not found' });

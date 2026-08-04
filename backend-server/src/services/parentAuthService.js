@@ -1,26 +1,46 @@
 const crypto = require('crypto');
+const bcrypt = require('bcryptjs');
 const env = require('../config/env');
+const { isPostgresEnabled, query } = require('../storage/dbPool');
 
 // Active Parent Sessions: token -> { token, username, createdAt, expiresAt }
 const parentSessions = new Map();
 
-function login(username, password) {
+async function login(username, password) {
   if (!username || !password) {
     return { success: false, error: 'Username and password are required' };
   }
 
-  // Constant-time check for username and password to prevent timing attacks
-  const userMatch = crypto.timingSafeEqual(
-    Buffer.from(String(username).padEnd(64)),
-    Buffer.from(String(env.PARENT_USERNAME).padEnd(64))
-  ) && username === env.PARENT_USERNAME;
+  let authenticated = false;
 
-  const passMatch = crypto.timingSafeEqual(
-    Buffer.from(String(password).padEnd(64)),
-    Buffer.from(String(env.PARENT_PASSWORD).padEnd(64))
-  ) && password === env.PARENT_PASSWORD;
+  if (isPostgresEnabled) {
+    try {
+      const res = await query('SELECT * FROM parent_accounts WHERE username = $1', [username]);
+      if (res.rows.length > 0) {
+        const parent = res.rows[0];
+        authenticated = await bcrypt.compare(password, parent.password_hash);
+      }
+    } catch (err) {
+      console.error('[ParentAuth] DB authentication error:', err.message);
+    }
+  }
 
-  if (!userMatch || !passMatch) {
+  // Fallback to environment variable authentication if DB not configured or empty
+  if (!authenticated) {
+    const userMatch = crypto.timingSafeEqual(
+      Buffer.from(String(username).padEnd(64)),
+      Buffer.from(String(env.PARENT_USERNAME).padEnd(64))
+    ) && username === env.PARENT_USERNAME;
+
+    const passMatch = crypto.timingSafeEqual(
+      Buffer.from(String(password).padEnd(64)),
+      Buffer.from(String(env.PARENT_PASSWORD).padEnd(64))
+    ) && password === env.PARENT_PASSWORD;
+
+    authenticated = userMatch && passMatch;
+  }
+
+  if (!authenticated) {
     return { success: false, error: 'Invalid parent credentials' };
   }
 

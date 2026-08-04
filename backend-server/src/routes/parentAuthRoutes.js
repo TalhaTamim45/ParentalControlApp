@@ -5,9 +5,9 @@ const { loginLimiter } = require('../middleware/rateLimiter');
 const { requireParentAuth } = require('../middleware/authMiddleware');
 
 // Parent Login
-router.post('/login', loginLimiter, (req, res) => {
+router.post('/login', loginLimiter, async (req, res) => {
   const { username, password } = req.body || {};
-  const result = parentAuthService.login(username, password);
+  const result = await parentAuthService.login(username, password);
   if (!result.success) {
     return res.status(401).json(result);
   }

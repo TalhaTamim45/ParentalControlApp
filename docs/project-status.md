@@ -1,20 +1,10 @@
-# Project Status - Phase 1 Milestone 3 (Implementation & Verification Complete)
+# Project Status - Phase 1 Milestone 4 (Tailscale Funnel Internet Deployment Complete)
 
-- **Active Branch**: `feature/device-pairing`
-- **Overall Status**: Milestone 3 Code Implementation, Security Architecture, Automated Backend Tests, Dashboard Build, and Android APK Compilation Complete.
-- **Physical Phone Status**: Physically Untested (No physical ADB device currently connected to system).
-- **Backend Relay Server**: Modularized (`src/routes`, `src/services`, `src/storage`, `src/middleware`, `src/socket`, `src/utils`). Automated security tests passing (`npm test`).
-- **Parent Web Dashboard**: Updated with parent authentication login, devices management page, 6-digit code generator modal, countdown timer, and unpair actions (`npm run build` verified).
-- **Child Android Companion App**: Updated with Jetpack Compose `PairingScreen` (Material 3), direct `AndroidKeyStore` AES-256-GCM credential encryption (`KeystoreManager.kt`), OkHttp client, Hilt DI, `PresenceCoordinator` heartbeat loop (~45s interval), and `network_security_config.xml` development HTTP exception (`./gradlew assembleDebug` verified).
-
----
-
-## Physical Phone Connection Instructions for End-to-End Testing
-
-To test the physical pairing flow on a real Android device:
-1. Connect physical Android phone to PC via USB with USB Debugging enabled.
-2. Verify connection: `C:\Android\Sdk\platform-tools\adb.exe devices`.
-3. Start backend server: `npm start` in `backend-server`.
-4. Update Android server URL to PC's LAN IP address (e.g., `http://192.168.1.X:4000`) in the app's pairing screen or `SERVER_BASE_URL`.
-5. Install debug APK: `C:\Android\Sdk\platform-tools\adb.exe install -r child-android-app\app\build\outputs\apk\debug\app-debug.apk`.
-6. Log into Parent Dashboard (`http://localhost:3000`), click "Generate Pairing Code", and enter the 6-digit code on the phone.
+- **Active Branch**: `feature/internet-deployment`
+- **Overall Status**: Phase 1 - Milestone 4 Complete & Physically Verified over Public Internet.
+- **Hosting Method**: Tailscale Funnel assigned stable public domain `https://nemo.tail7499c7.ts.net`.
+- **Public Origin Architecture**: Unified Node.js server serving Dashboard SPA at `/`, REST API under `/api`, and Socket.io under `/socket.io` on single port 4000.
+- **Database Layer**: PostgreSQL support (`dbPool.js`, `001_init_schema.sql`) with `bcryptjs` password hashing and `devStorage` fallback for offline tests.
+- **Parent Web Dashboard**: Built for production (`npm run build`), served same-origin at `https://nemo.tail7499c7.ts.net`.
+- **Child Android App**: Configured with production public HTTPS domain (`https://nemo.tail7499c7.ts.net`), strict HTTPS enforcement (`cleartextTrafficPermitted="false"`), Android KeyStore AES-256-GCM encryption, and automatic exponential backoff reconnection over mobile data.
+- **Physical Verification**: Tested on Samsung Galaxy A12 over public mobile data (parent login, 6-digit code generation, public pairing, active presence, network switching, and remote unpairing).
