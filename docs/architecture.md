@@ -2,51 +2,55 @@
 
 The **ParentalControlApp** suite consists of three decoupled components:
 
-1. **Child Android Companion App (`child-android-app`)**: Kotlin-based Android application (API 36 target) using Jetpack Compose and Clean MVVM architecture. Encrypts authentication tokens via **Android KeyStore** (AES-256-GCM) and conducts token-based authenticated REST/WebSocket pings.
-2. **Backend Relay Server (`backend-server`)**: Node.js + Express + Socket.io relay server handling parent authentication, temporary one-time pairing codes (SHA-256 hashed), token-hashed device registration, and real-time presence signaling.
+1. **Child Android Companion App (`child-android-app`)**: Kotlin-based Android application (API 36 target) using Jetpack Compose, Clean MVVM architecture, and `ParentalForegroundService` (API 36 `specialUse` type). Encrypts authentication tokens via **Android KeyStore** (AES-256-GCM) and conducts token-based authenticated REST/WebSocket pings.
+2. **Backend Relay Server (`backend-server`)**: Unified Node.js + Express + Socket.io relay server handling parent authentication, temporary one-time pairing codes (SHA-256 hashed), token-hashed device registration, static dashboard SPA serving, and real-time presence signaling.
 3. **Parent Web Dashboard (`parent-dashboard`)**: React + Vite web application requiring parent session authentication for device management, temporary pairing code generation, and live presence monitoring.
 
 ```
 +---------------------+           +------------------------+           +----------------------+
 |  Child Companion    | <=======> |  Backend Relay Server  | <=======> |  Parent Web          |
 |  Android App        |  Socket   |  (Node.js / Express /  |  Socket   |  Dashboard           |
-|  (Clean MVVM UI +   |  / REST   |   Socket.io - Port     |  / REST   |  (React + Vite -     |
-|   Android KeyStore) | (Token)   |   4000)                | (Session) |   Port 3000)         |
+|  (Foreground        |  / REST   |   Socket.io - Port     |  / REST   |  (React + Vite SPA   |
+|   Service & KeyStore)| (Token)  |   4000)                | (Session) |   Bundle)            |
 +---------------------+           +------------------------+           +----------------------+
 ```
 
 ---
 
-## Milestone 3: Secure Device Pairing & Registration Architecture
+## Milestone 5: Android Core Service & Reliability Architecture
 
-### 1. Parent Authentication Layer
-Parent endpoints (`/api/pairing/generate`, `/api/devices`, etc.) require parent authentication.
-- **Login Endpoint**: `POST /api/parent/login` accepts credentials matching environment variables (`PARENT_USERNAME`, `PARENT_PASSWORD`).
-- **Session Token**: Issues a short-lived parent session token.
-- **Header**: All protected parent REST calls pass `x-parent-token: <session_token>` or `Authorization: Bearer <session_token>`.
+### 1. Foreground Service Architecture (`ParentalForegroundService.kt`)
+- **Service Type**: `android:foregroundServiceType="specialUse"` targeting API 36 with manifest property `<property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="Parent-authorized child protection and supervision connection" />`.
+- **Single-Owner State Machine**: `Stopped`, `Starting`, `Active`, `WaitingForNetwork`, `Reconnecting`, `AuthenticationFailed`, `Revoked`, `Stopping`, `Failed`. Single owner for socket connection and heartbeat loop (~45s).
+- **Persistent Notification**: Low/Default importance ongoing notification (`parental_service_channel`) showing honest status ("Connected & Protected", "Reconnecting...", "Offline").
 
-### 2. Pairing Code Protocol & Security
-- **Generation**: Parent generates a 6-digit numeric code via `POST /api/pairing/generate` (cryptographically random via `crypto.randomInt`).
-- **Storage**: Backend stores ONLY a SHA-256 hash of the code in memory with a 10-minute expiration.
-- **Single-Use**: Immediately invalidated and deleted upon successful validation.
-- **Rate Limiting**: Protected against brute-force guessing and rate limited by IP/session.
+### 2. Boot Auto-Recovery (`BootReceiver.kt`)
+- Listens to `Intent.ACTION_BOOT_COMPLETED` and `Intent.ACTION_MY_PACKAGE_REPLACED`.
+- Verifies encrypted KeyStore credentials. Safe FGS execution inside `try-catch (ForegroundServiceStartNotAllowedException)` to prevent boot crash loops. If background FGS launch is restricted by OS, displays a user-facing notification to tap and reactivate protection.
 
-### 3. Device Token & Credential Protection
-- **Raw Token Issuance**: On successful pairing code validation (`POST /api/pairing/validate`), backend returns a 256-bit crypto-random token to the child device once.
-- **Backend Hashing**: Backend stores ONLY the SHA-256 hash (`tokenHash`) in `db.json`. Raw tokens are never logged or persisted on backend storage.
-- **Android Keystore Encryption**: Child app encrypts the raw token using AES-256-GCM via `AndroidKeyStore` (`KeystoreManager.kt`) and stores ciphertext + IV in `SharedPreferences`.
+### 3. Real-Time Network Callback Monitoring (`NetworkMonitor.kt`)
+- Uses `ConnectivityManager.registerDefaultNetworkCallback` to detect Wi-Fi and Mobile Data availability, loss, and validated internet access.
+- Restores connections with single-owner jittered exponential backoff.
 
-### 4. Socket Roles & Authorization
-Socket.io handshakes enforce explicit authentication roles:
-- **Role `parent`**: Verified with parent session token. Enters `parent_room` to receive presence updates. Cannot impersonate devices.
-- **Role `child`**: Verified with raw device token (matched against `tokenHash`). Enters `device_<id>` room. Emits heartbeat events. Disallowed from parent administrative events.
+### 4. Battery Optimization & Exemption Flow (`BatteryOptimizationManager.kt`)
+- Detects `PowerManager.isIgnoringBatteryOptimizations()`.
+- Provides UI prompt to open system settings (`ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` or app settings) with Samsung Galaxy A12 Device Care instructions (Unrestricted battery setting & "Never sleeping apps").
 
-### 5. Truthful Presence & Heartbeat Management
-- Presence is calculated dynamically from active socket connection state + `lastSeen` window (90 seconds).
-- `PresenceCoordinator` on Android manages a periodic heartbeat (~45 seconds) while the app process is active.
-- Devices are marked **OFFLINE** on the dashboard if no heartbeat/socket ping is received for >90 seconds.
+### 5. Crash Diagnostics (`CrashHandler.kt`)
+- Global `UncaughtExceptionHandler` logs sanitized local crash reports (timestamp + class + sanitized stack trace, strictly omitting tokens, passwords, and secrets). Delegates to original handler without infinite restart loops.
 
-### 6. Device Revocation & Unpairing
-- Parent unpairs device via `POST /api/devices/:id/unpair`.
-- Token is revoked (`revokedAt = timestamp`). Sockets are forcibly disconnected.
-- Subsequent heartbeats return HTTP 401, causing the Child App to clear local Keystore credentials and reset to `PairingScreen`.
+---
+
+## Milestone 3 & 4: Internet Deployment & Pairing Architecture
+
+### 1. Public HTTPS Domain Routing (Tailscale Funnel)
+- Assigned permanent public domain: `https://nemo.tail7499c7.ts.net`.
+- Unified Node server serves Dashboard SPA at `/`, REST API at `/api`, and Socket.io at `/socket.io`.
+
+### 2. Parent Authentication & PostgreSQL Migration
+- Parent endpoints require session tokens. Passwords hashed using `bcryptjs` (12 salt rounds).
+- Database support via `dbPool.js` & `001_init_schema.sql` (PostgreSQL).
+
+### 3. Device Token Hashing & Android KeyStore Encryption
+- Backend stores ONLY SHA-256 token hashes (`tokenHash`) in database.
+- Child app encrypts raw token using AES-256-GCM via `AndroidKeyStore` (`KeystoreManager.kt`). `android:allowBackup="false"` prevents leakage.

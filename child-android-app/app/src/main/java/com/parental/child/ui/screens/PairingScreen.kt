@@ -1,23 +1,27 @@
 package com.parental.child.ui.screens
 
-import androidx.compose.foundation.background
+import android.content.Context
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.parental.child.battery.BatteryOptimizationManager
+import com.parental.child.service.ParentalForegroundService
 import com.parental.child.ui.LauncherUiState
+import com.parental.child.utils.CrashHandler
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -31,6 +35,10 @@ fun PairingScreen(
     onUnpairClicked: () -> Unit
 ) {
     val scrollState = rememberScrollState()
+    val context = LocalContext.current
+    val batteryManager = remember { BatteryOptimizationManager(context) }
+    var isBatteryOptIgnored by remember { mutableStateOf(batteryManager.isIgnoringBatteryOptimizations()) }
+    val lastCrashLog = remember { CrashHandler.getLastCrashReport(context) }
 
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -39,7 +47,7 @@ fun PairingScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(24.dp)
+                .padding(20.dp)
                 .verticalScroll(scrollState),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
@@ -48,7 +56,7 @@ fun PairingScreen(
             Card(
                 colors = CardDefaults.cardColors(containerColor = Color(0xFF1E293B)),
                 shape = RoundedCornerShape(16.dp),
-                modifier = Modifier.padding(bottom = 24.dp)
+                modifier = Modifier.padding(bottom = 20.dp)
             ) {
                 Row(
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
@@ -61,7 +69,7 @@ fun PairingScreen(
                         fontSize = 14.sp
                     )
                     Text(
-                        text = " • v${uiState.version}",
+                        text = " • Milestone 5 Reliability",
                         color = Color(0xFF94A3B8),
                         fontSize = 12.sp
                     )
@@ -159,7 +167,7 @@ fun PairingScreen(
                         OutlinedTextField(
                             value = uiState.serverUrl,
                             onValueChange = onServerUrlChanged,
-                            label = { Text("Backend Server URL (LAN IP / Host)") },
+                            label = { Text("Public Server Base URL") },
                             singleLine = true,
                             enabled = !uiState.isLoading,
                             colors = OutlinedTextFieldDefaults.colors(
@@ -205,14 +213,14 @@ fun PairingScreen(
                     }
                 }
             } else {
-                // PAIRED SUCCESS STATE
+                // PAIRED SUCCESS STATE WITH SERVICE & RELIABILITY CONTROLS
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(containerColor = Color(0xFF151C2C)),
                     shape = RoundedCornerShape(24.dp)
                 ) {
                     Column(
-                        modifier = Modifier.padding(24.dp),
+                        modifier = Modifier.padding(20.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         // Success Badge
@@ -221,7 +229,7 @@ fun PairingScreen(
                             shape = RoundedCornerShape(50)
                         ) {
                             Text(
-                                text = "✓ DEVICE SECURELY PAIRED",
+                                text = "✓ DEVICE PAIRED & PROTECTED",
                                 color = Color(0xFF34D399),
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 12.sp,
@@ -229,12 +237,12 @@ fun PairingScreen(
                             )
                         }
 
-                        Spacer(modifier = Modifier.height(16.dp))
+                        Spacer(modifier = Modifier.height(12.dp))
 
                         Text(
                             text = uiState.deviceName,
                             color = Color.White,
-                            fontSize = 22.sp,
+                            fontSize = 20.sp,
                             fontWeight = FontWeight.Bold
                         )
 
@@ -242,31 +250,57 @@ fun PairingScreen(
                             text = "Device ID: ${uiState.deviceId}",
                             color = Color(0xFF64748B),
                             fontFamily = FontFamily.Monospace,
-                            fontSize = 12.sp,
-                            modifier = Modifier.padding(top = 4.dp, bottom = 20.dp)
+                            fontSize = 11.sp,
+                            modifier = Modifier.padding(top = 2.dp, bottom = 16.dp)
                         )
 
-                        // Status Info Box
-                        Card(
+                        // Service Control Toggle Buttons
+                        Row(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(bottom = 16.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Button(
+                                onClick = { ParentalForegroundService.startService(context) },
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF10B981)),
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text("START SERVICE", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            }
+
+                            Button(
+                                onClick = { ParentalForegroundService.stopService(context) },
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF475569)),
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text("STOP SERVICE", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+
+                        // Connection Status Card
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 12.dp),
                             colors = CardDefaults.cardColors(containerColor = Color(0xFF0B0F19)),
                             shape = RoundedCornerShape(16.dp)
                         ) {
-                            Column(modifier = Modifier.padding(16.dp)) {
+                            Column(modifier = Modifier.padding(14.dp)) {
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .padding(bottom = 8.dp),
+                                        .padding(bottom = 6.dp),
                                     horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
-                                    Text("Connection Status:", color = Color(0xFF94A3B8), fontSize = 13.sp)
+                                    Text("Connection Status:", color = Color(0xFF94A3B8), fontSize = 12.sp)
                                     Text(
                                         text = uiState.connectionStatus,
                                         color = if (uiState.connectionStatus == "CONNECTED") Color(0xFF34D399) else Color(0xFFF59E0B),
                                         fontWeight = FontWeight.Bold,
-                                        fontSize = 13.sp
+                                        fontSize = 12.sp
                                     )
                                 }
 
@@ -274,30 +308,102 @@ fun PairingScreen(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
-                                    Text("Last Heartbeat:", color = Color(0xFF94A3B8), fontSize = 13.sp)
+                                    Text("Last Heartbeat:", color = Color(0xFF94A3B8), fontSize = 12.sp)
                                     Text(
                                         text = formatTime(uiState.lastHeartbeatTimestamp),
                                         color = Color.White,
                                         fontWeight = FontWeight.Medium,
-                                        fontSize = 13.sp
+                                        fontSize = 12.sp
                                     )
                                 }
                             }
                         }
 
-                        // Background Presence Notice Card
+                        // Battery Optimization Status Card
                         Card(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(bottom = 24.dp),
-                            colors = CardDefaults.cardColors(containerColor = Color(0x22F59E0B)),
+                                .padding(bottom = 12.dp),
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFF0B0F19)),
+                            shape = RoundedCornerShape(16.dp)
+                        ) {
+                            Column(modifier = Modifier.padding(14.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = "Battery Optimization",
+                                            color = Color.White,
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 12.sp
+                                        )
+                                        Text(
+                                            text = if (isBatteryOptIgnored) "Unrestricted (Recommended)" else "Optimized (May pause background sync)",
+                                            color = if (isBatteryOptIgnored) Color(0xFF34D399) else Color(0xFFF59E0B),
+                                            fontSize = 11.sp
+                                        )
+                                    }
+
+                                    Button(
+                                        onClick = {
+                                            try {
+                                                context.startActivity(batteryManager.createOptimizationRequestIntent())
+                                                isBatteryOptIgnored = batteryManager.isIgnoringBatteryOptimizations()
+                                            } catch (_: Exception) {}
+                                        },
+                                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF334155)),
+                                        shape = RoundedCornerShape(8.dp),
+                                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
+                                    ) {
+                                        Text("Configure", fontSize = 11.sp, color = Color.White)
+                                    }
+                                }
+                            }
+                        }
+
+                        // Last Crash Log Card (if crash report exists)
+                        lastCrashLog?.let { crash ->
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(bottom = 12.dp),
+                                colors = CardDefaults.cardColors(containerColor = Color(0x33F43F5E)),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Column(modifier = Modifier.padding(12.dp)) {
+                                    Text(
+                                        text = "Last Sanitized Crash Log:",
+                                        color = Color(0xFFFB7185),
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 11.sp
+                                    )
+                                    Text(
+                                        text = crash.take(200),
+                                        color = Color.LightGray,
+                                        fontFamily = FontFamily.Monospace,
+                                        fontSize = 10.sp,
+                                        modifier = Modifier.padding(top = 4.dp)
+                                    )
+                                }
+                            }
+                        }
+
+                        // Milestone 5 Reliability Notice Card
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 16.dp),
+                            colors = CardDefaults.cardColors(containerColor = Color(0x1A38BDF8)),
                             shape = RoundedCornerShape(12.dp)
                         ) {
                             Text(
-                                text = "Notice: Continuous background presence is not implemented yet. Heartbeat runs while app process is active.",
-                                color = Color(0xFFFBBF24),
+                                text = "Milestone 5 Active: Foreground Protection Service runs in background with low-priority notification, network callbacks, and boot auto-recovery.",
+                                color = Color(0xFF38BDF8),
                                 fontSize = 11.sp,
-                                modifier = Modifier.padding(12.dp),
+                                modifier = Modifier.padding(10.dp),
                                 textAlign = TextAlign.Center
                             )
                         }
@@ -309,9 +415,9 @@ fun PairingScreen(
                             shape = RoundedCornerShape(12.dp),
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(46.dp)
+                                .height(44.dp)
                         ) {
-                            Text("UNPAIR DEVICE", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                            Text("UNPAIR DEVICE", fontWeight = FontWeight.Bold, fontSize = 12.sp)
                         }
                     }
                 }

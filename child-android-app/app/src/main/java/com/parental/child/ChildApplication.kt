@@ -1,6 +1,7 @@
 package com.parental.child
 
 import android.app.Application
+import com.parental.child.utils.CrashHandler
 import dagger.hilt.android.HiltAndroidApp
 import timber.log.Timber
 
@@ -11,6 +12,7 @@ class ChildApplication : Application() {
         if (BuildConfig.DEBUG) {
             Timber.plant(Timber.DebugTree())
         }
-        Timber.i("ChildApplication initialized - Phase 1 Foundation Active")
+        CrashHandler.init(this)
+        Timber.i("ChildApplication initialized - Milestone 5 Reliability Active")
     }
 }

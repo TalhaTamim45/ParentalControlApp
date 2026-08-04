@@ -1,19 +1,18 @@
 # Android Permissions & Security Matrix
 
-## Phase 1 (Foundation & Secure Pairing)
-- **Active Permissions**:
-  - `android.permission.INTERNET`: Required for REST API communication and Socket.io presence signaling.
-  - `android.permission.ACCESS_NETWORK_STATE`: Required for monitoring network connectivity.
+## Active Milestone 5 Permissions Audit (Minimal Permitted Set)
+- `android.permission.INTERNET`: Required for REST API communication and Socket.io WSS presence.
+- `android.permission.ACCESS_NETWORK_STATE`: Required for NetworkMonitor callback detection.
+- `android.permission.FOREGROUND_SERVICE`: Required for running persistent long-running protection service.
+- `android.permission.FOREGROUND_SERVICE_SPECIAL_USE`: Required for API 34-36 `specialUse` type declaration with `<property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="Parent-authorized child protection and supervision connection" />`.
+- `android.permission.POST_NOTIFICATIONS`: Required for Android 13+ (API 33+) ongoing persistent notification display.
+- `android.permission.RECEIVE_BOOT_COMPLETED`: Required for BootReceiver device restart auto-recovery.
+- `android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`: Required for user-guided Battery Saver exemption on Samsung Galaxy A12 / Android 13.
+
+## Prohibited & Removed Permissions (Unimplemented Features)
+- `FOREGROUND_SERVICE_DATA_SYNC`: Prohibited for continuous FGS operation on Android 15+ (API 35/36 6-hour limit). Removed.
+- All future permissions (`ACCESS_FINE_LOCATION`, `CAMERA`, `RECORD_AUDIO`, `PACKAGE_USAGE_STATS`, etc.) remain strictly excluded until their respective future milestones.
 
 ## Network Security Configuration
 - File: `app/src/main/res/xml/network_security_config.xml`
-- **Development Exception**: Cleartext HTTP traffic (`cleartextTrafficPermitted="true"`) is allowed strictly for development host domain/IPs (`10.0.2.2`, `localhost`, local LAN IPv4 ranges).
-- **Production Enforcer**: Base configuration enforces strict HTTPS/WSS (`cleartextTrafficPermitted="false"`).
-
-## Planned Permissions for Future Phases
-- `android.permission.ACCESS_FINE_LOCATION`: High-accuracy GPS tracking (Phase 3).
-- `android.permission.ACCESS_BACKGROUND_LOCATION`: Continuous geofence monitoring (Phase 3).
-- `android.permission.PACKAGE_USAGE_STATS`: Screen time monitoring & app blocking (Phase 4).
-- `android.permission.BIND_NOTIFICATION_LISTENER_SERVICE`: Incoming notification mirroring (Phase 5).
-- `android.permission.CAMERA`: Remote live camera feed streaming (Phase 6).
-- `android.permission.RECORD_AUDIO`: Ambient audio inspection (Phase 6).
+- Base configuration enforces strict HTTPS/WSS (`cleartextTrafficPermitted="false"`).
