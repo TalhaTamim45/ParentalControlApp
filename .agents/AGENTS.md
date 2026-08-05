@@ -158,6 +158,19 @@ Always classify evidence according to its strength:
 
 Never use a stronger classification than the evidence supports.
 
+## Engineering Reflection Rule
+
+Every implementation and milestone report must conclude with an explicit **Engineering Reflection** section answering:
+
+1. **What exactly did you do?**
+2. **Why did you choose this approach instead of alternatives?**
+3. **What other hypotheses did you consider, and why were they rejected?**
+4. **What evidence convinced you the chosen approach was correct?**
+5. **What limitations remain?**
+6. **What would you do differently if starting this task from scratch?**
+7. **What lessons should future engineers learn from this work?**
+
+
 
 
 
