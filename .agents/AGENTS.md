@@ -185,6 +185,11 @@ It should answer:
 5. **What permanent change prevents this class of issue in the future?**
 6. **How would another engineer recognize this issue in under five minutes if it ever happens again?**
 
+## Observed Evidence Rule
+
+Never state that a third-party application (such as FlashGet Kids) uses a specific technology or implementation pattern unless it has been directly observed or independently verified through reverse engineering or protocol capture. When the implementation details cannot be confirmed, explicitly label it as a **Hypothesis** and explain the technical reasoning behind it.
+
+
 
 
 
