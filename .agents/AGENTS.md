@@ -145,5 +145,19 @@ Android functionality shall only be reported as **Android Verified** after succe
 
 These verification statuses must never be merged.
 
+## Evidence Strength Rule
+
+Always classify evidence according to its strength:
+
+* **Physically Verified**
+* **Backend Verified**
+* **Automated Test Verified**
+* **Static Analysis**
+* **Expected to Work**
+* **Not Tested**
+
+Never use a stronger classification than the evidence supports.
+
+
 
 
