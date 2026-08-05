@@ -6,9 +6,17 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 import timber.log.Timber
+import java.io.EOFException
+import java.net.ConnectException
+import java.net.SocketException
+import java.net.SocketTimeoutException
+import java.net.UnknownHostException
+import java.security.cert.CertificateException
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
+import javax.net.ssl.SSLHandshakeException
+import javax.net.ssl.SSLPeerUnverifiedException
 
 data class PairingResponse(
     val success: Boolean,
@@ -24,26 +32,122 @@ data class HeartbeatResponse(
     val error: String? = null
 )
 
-@Singleton
-class PairingApiClient @Inject constructor() {
+/**
+ * Health check result for /api/status endpoint.
+ */
+data class HealthCheckResult(
+    val reachable: Boolean,
+    val httpStatus: Int? = null,
+    val tlsProtocol: String? = null,
+    val durationMs: Long? = null,
+    val error: String? = null,
+    val errorCode: String? = null
+)
 
-    private val client: OkHttpClient = OkHttpClient.Builder()
-        .connectTimeout(10, TimeUnit.SECONDS)
-        .readTimeout(10, TimeUnit.SECONDS)
-        .writeTimeout(10, TimeUnit.SECONDS)
-        .build()
+/**
+ * Standard REST API client using default OkHttp TLS configuration.
+ * TLS trust is managed by Android Network Security Configuration
+ * (network_security_config.xml), not by custom code.
+ */
+@Singleton
+class PairingApiClient @Inject constructor(
+    private val client: OkHttpClient
+) {
 
     private val jsonMediaType = "application/json; charset=utf-8".toMediaType()
+
+    private fun normalizeUrl(rawUrl: String): String {
+        var clean = rawUrl.trim()
+        if (!clean.startsWith("http://") && !clean.startsWith("https://")) {
+            clean = "https://$clean"
+        }
+        return clean.trimEnd('/')
+    }
+
+    /**
+     * Checks server reachability and TLS connectivity by calling GET /api/status.
+     * Uses the same OkHttpClient and TLS configuration as the pairing request.
+     */
+    fun checkServerHealth(serverUrl: String): HealthCheckResult {
+        val baseUrl = normalizeUrl(serverUrl)
+        val endpoint = "$baseUrl/api/status"
+        val startTime = System.currentTimeMillis()
+
+        Timber.i("Health check -> GET %s", endpoint)
+
+        val request = Request.Builder()
+            .url(endpoint)
+            .get()
+            .build()
+
+        return try {
+            client.newCall(request).execute().use { response ->
+                val duration = System.currentTimeMillis() - startTime
+                val tlsProtocol = response.handshake?.tlsVersion?.javaName
+                Timber.i(
+                    "Health check response -> Status: %d | Duration: %d ms | TLS: %s",
+                    response.code, duration, tlsProtocol
+                )
+                HealthCheckResult(
+                    reachable = response.isSuccessful,
+                    httpStatus = response.code,
+                    tlsProtocol = tlsProtocol,
+                    durationMs = duration
+                )
+            }
+        } catch (e: UnknownHostException) {
+            Timber.e(e, "Health check DNS failure: %s", endpoint)
+            HealthCheckResult(reachable = false, error = "Cannot resolve server domain", errorCode = "NET-HC-001")
+        } catch (e: SSLHandshakeException) {
+            val rootCause = findRootCause(e)
+            Timber.e(e, "Health check TLS handshake failure: %s | Root cause: %s: %s",
+                endpoint, rootCause.javaClass.simpleName, rootCause.message)
+            HealthCheckResult(
+                reachable = false,
+                error = "TLS handshake failed: ${rootCause.javaClass.simpleName}",
+                errorCode = "NET-HC-002"
+            )
+        } catch (e: SSLPeerUnverifiedException) {
+            Timber.e(e, "Health check TLS peer unverified: %s", endpoint)
+            HealthCheckResult(reachable = false, error = "TLS certificate unverified", errorCode = "NET-HC-002")
+        } catch (e: CertificateException) {
+            Timber.e(e, "Health check certificate exception: %s", endpoint)
+            HealthCheckResult(reachable = false, error = "Invalid server certificate", errorCode = "NET-HC-002")
+        } catch (e: ConnectException) {
+            Timber.e(e, "Health check connection refused: %s", endpoint)
+            HealthCheckResult(reachable = false, error = "Server connection refused", errorCode = "NET-HC-003")
+        } catch (e: SocketException) {
+            Timber.e(e, "Health check socket error: %s", endpoint)
+            HealthCheckResult(reachable = false, error = "Socket error", errorCode = "NET-HC-003")
+        } catch (e: EOFException) {
+            Timber.e(e, "Health check EOF: %s", endpoint)
+            HealthCheckResult(reachable = false, error = "Server closed connection", errorCode = "NET-HC-004")
+        } catch (e: SocketTimeoutException) {
+            Timber.e(e, "Health check timeout: %s", endpoint)
+            HealthCheckResult(reachable = false, error = "Connection timed out", errorCode = "NET-HC-005")
+        } catch (e: Exception) {
+            Timber.e(e, "Health check unexpected error: %s", endpoint)
+            HealthCheckResult(
+                reachable = false,
+                error = "${e.javaClass.simpleName}: ${e.localizedMessage}",
+                errorCode = "NET-HC-099"
+            )
+        }
+    }
 
     /**
      * Submits pairing code to backend for validation and device identity registration.
      */
     fun validatePairingCode(serverUrl: String, code: String, deviceName: String): PairingResponse {
-        val endpoint = "${serverUrl.trimEnd('/')}/api/pairing/validate"
+        val baseUrl = normalizeUrl(serverUrl)
+        val endpoint = "$baseUrl/api/pairing/validate"
         val payload = JSONObject().apply {
             put("code", code)
             put("deviceName", deviceName)
         }.toString()
+
+        val startTime = System.currentTimeMillis()
+        Timber.i("Starting pairing REST request -> Method: POST | URL: %s | Device: %s", endpoint, deviceName)
 
         val request = Request.Builder()
             .url(endpoint)
@@ -52,8 +156,13 @@ class PairingApiClient @Inject constructor() {
 
         return try {
             client.newCall(request).execute().use { response ->
+                val duration = System.currentTimeMillis() - startTime
                 val bodyStr = response.body?.string() ?: ""
                 val json = if (bodyStr.isNotEmpty()) JSONObject(bodyStr) else JSONObject()
+
+                Timber.i("Pairing REST response -> Status: %d | Duration: %d ms | Content-Type: %s",
+                    response.code, duration, response.header("Content-Type"))
+
                 if (response.isSuccessful && json.optBoolean("success", false)) {
                     PairingResponse(
                         success = true,
@@ -62,15 +171,43 @@ class PairingApiClient @Inject constructor() {
                         deviceName = json.optString("name")
                     )
                 } else {
+                    val serverError = json.optString("error", "Server returned HTTP ${response.code}")
+                    Timber.w("Pairing rejected by server -> Status: %d | Error: %s", response.code, serverError)
                     PairingResponse(
                         success = false,
-                        error = json.optString("error", "Validation failed (HTTP ${response.code})")
+                        error = "$serverError [NET-PAIR-HTTP-${response.code}]"
                     )
                 }
             }
+        } catch (e: UnknownHostException) {
+            Timber.e(e, "Pairing DNS failure for URL: %s", endpoint)
+            PairingResponse(success = false, error = "Cannot resolve server domain ($baseUrl) [NET-PAIR-001]")
+        } catch (e: SSLHandshakeException) {
+            val rootCause = findRootCause(e)
+            Timber.e(e, "Pairing TLS handshake failure for URL: %s | Root cause: %s: %s",
+                endpoint, rootCause.javaClass.simpleName, rootCause.message)
+            PairingResponse(success = false, error = "TLS handshake failed with server [NET-PAIR-002]")
+        } catch (e: SSLPeerUnverifiedException) {
+            Timber.e(e, "Pairing TLS peer unverified for URL: %s", endpoint)
+            PairingResponse(success = false, error = "TLS certificate unverified [NET-PAIR-002]")
+        } catch (e: CertificateException) {
+            Timber.e(e, "Pairing certificate exception for URL: %s", endpoint)
+            PairingResponse(success = false, error = "Invalid server TLS certificate [NET-PAIR-002]")
+        } catch (e: ConnectException) {
+            Timber.e(e, "Pairing connection refused for URL: %s", endpoint)
+            PairingResponse(success = false, error = "Server connection refused or offline [NET-PAIR-003]")
+        } catch (e: SocketException) {
+            Timber.e(e, "Pairing socket exception for URL: %s", endpoint)
+            PairingResponse(success = false, error = "Socket communication error [NET-PAIR-003]")
+        } catch (e: EOFException) {
+            Timber.e(e, "Pairing EOF exception (server closed connection unexpectedly) for URL: %s", endpoint)
+            PairingResponse(success = false, error = "Server closed connection unexpectedly [NET-PAIR-004]")
+        } catch (e: SocketTimeoutException) {
+            Timber.e(e, "Pairing timeout for URL: %s", endpoint)
+            PairingResponse(success = false, error = "Connection request timed out [NET-PAIR-005]")
         } catch (e: Exception) {
-            Timber.e(e, "Pairing network request error")
-            PairingResponse(success = false, error = e.localizedMessage ?: "Connection error to server")
+            Timber.e(e, "Unexpected network exception for URL: %s", endpoint)
+            PairingResponse(success = false, error = "Network error: ${e.javaClass.simpleName} (${e.localizedMessage}) [NET-PAIR-099]")
         }
     }
 
@@ -78,7 +215,8 @@ class PairingApiClient @Inject constructor() {
      * Sends heartbeat ping to backend.
      */
     fun sendHeartbeat(serverUrl: String, authToken: String): HeartbeatResponse {
-        val endpoint = "${serverUrl.trimEnd('/')}/api/devices/heartbeat"
+        val baseUrl = normalizeUrl(serverUrl)
+        val endpoint = "$baseUrl/api/devices/heartbeat"
         val request = Request.Builder()
             .url(endpoint)
             .post("{}".toRequestBody(jsonMediaType))
@@ -98,5 +236,16 @@ class PairingApiClient @Inject constructor() {
         } catch (e: Exception) {
             HeartbeatResponse(success = false, error = e.localizedMessage)
         }
+    }
+
+    /**
+     * Traverses the exception cause chain to find the root cause.
+     */
+    private fun findRootCause(e: Throwable): Throwable {
+        var cause: Throwable = e
+        while (cause.cause != null && cause.cause !== cause) {
+            cause = cause.cause!!
+        }
+        return cause
     }
 }

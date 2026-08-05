@@ -1,10 +1,29 @@
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
+    <!-- Base configuration: HTTPS only, standard system CAs -->
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+
     <!-- Permit HTTP cleartext traffic strictly for local emulator/localhost debug builds -->
     <domain-config cleartextTrafficPermitted="true">
         <domain includeSubdomains="true">10.0.2.2</domain>
         <domain includeSubdomains="true">localhost</domain>
     </domain-config>
-    <!-- Base configuration for production / release builds requires strict HTTPS/WSS -->
-    <base-config cleartextTrafficPermitted="false" />
+
+    <!--
+        Domain-scoped additional trust for Tailscale Funnel endpoint.
+        Tailscale Funnel uses a Let's Encrypt certificate that chains to ISRG Root X2 (ECDSA).
+        Samsung Galaxy A12 (Android 13) does not include ISRG Root X2 in its system trust store.
+        This adds the official self-signed public root certificate as an additional trust anchor, scoped strictly to the Tailscale Funnel domain.
+    -->
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="false">nemo.tail7499c7.ts.net</domain>
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="@raw/isrg_root_x2" />
+        </trust-anchors>
+    </domain-config>
 </network-security-config>

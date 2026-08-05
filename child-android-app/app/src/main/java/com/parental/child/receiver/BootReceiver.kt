@@ -26,12 +26,12 @@ class BootReceiver : BroadcastReceiver() {
         Timber.i("BootReceiver onReceive action: %s", action)
 
         if (action == Intent.ACTION_BOOT_COMPLETED || action == Intent.ACTION_MY_PACKAGE_REPLACED) {
-            if (!credentialManager.isPaired()) {
-                Timber.i("Device not paired, skipping boot auto-start")
+            if (!credentialManager.isServiceEnabled()) {
+                Timber.i("Device not paired or service explicitly stopped by user preference, skipping boot auto-start")
                 return
             }
 
-            Timber.i("Paired credentials found on boot, attempting service restoration...")
+            Timber.i("Paired & enabled credentials found on boot, attempting service restoration...")
             try {
                 ParentalForegroundService.startService(context)
                 Timber.i("Service boot auto-start initiated successfully")

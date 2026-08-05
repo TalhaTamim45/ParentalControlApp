@@ -34,8 +34,8 @@ object DataModule {
 
     @Provides
     @Singleton
-    fun providePairingApiClient(): PairingApiClient {
-        return PairingApiClient()
+    fun providePairingApiClient(okHttpClient: okhttp3.OkHttpClient): PairingApiClient {
+        return PairingApiClient(okHttpClient)
     }
 
     @Provides

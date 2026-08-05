@@ -15,6 +15,17 @@ const { registerSocketHandlers } = require('./src/socket/socketHandler');
 
 const app = express();
 app.use(cors());
+
+// Diagnostic HTTP Logger
+app.use((req, res, next) => {
+  const start = Date.now();
+  res.on('finish', () => {
+    const duration = Date.now() - start;
+    console.log(`[HTTP] ${new Date().toISOString()} ${req.method} ${req.originalUrl} - ${res.statusCode} (${duration}ms) IP: ${req.ip || req.socket.remoteAddress} UA: "${req.get('user-agent') || 'none'}"`);
+  });
+  next();
+});
+
 app.use(express.json({ limit: '1mb' }));
 
 // Serve Parent Dashboard Static SPA Bundle at root '/'

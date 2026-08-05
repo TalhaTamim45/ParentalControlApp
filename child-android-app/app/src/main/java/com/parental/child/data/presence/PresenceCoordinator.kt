@@ -61,7 +61,7 @@ class PresenceCoordinator @Inject constructor(
                 reconnectionDelayMax = 30000
             }
 
-            val socketUrl = serverUrl.trimEnd('/')
+            val socketUrl = serverUrl.trim().trimEnd('/')
             socket = IO.socket(socketUrl, options).apply {
                 on(Socket.EVENT_CONNECT) {
                     Timber.i("Socket.io connected successfully to %s", socketUrl)

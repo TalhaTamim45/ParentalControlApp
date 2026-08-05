@@ -77,6 +77,9 @@ class ParentalForegroundService : Service() {
             currentState.set(ServiceState.STARTING)
         }
 
+        // Record user service-enabled preference
+        credentialManager.setServiceEnabled(true)
+
         // Start foreground with persistent notification
         val notification = buildNotification("Parent Shield Active", "Initializing device connection...")
         try {
@@ -122,7 +125,11 @@ class ParentalForegroundService : Service() {
     }
 
     private fun stopProtectionService() {
-        Timber.i("Stopping protection service explicitly")
+        Timber.i("Stopping protection service explicitly by user request")
+        
+        // Record user service-disabled preference so boot recovery respects explicit stop choice
+        credentialManager.setServiceEnabled(false)
+
         updateState(ServiceState.STOPPING, "Stopping protection...")
         
         networkMonitor?.stopMonitoring()
