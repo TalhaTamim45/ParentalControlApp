@@ -170,6 +170,22 @@ Every implementation and milestone report must conclude with an explicit **Engin
 6. **What would you do differently if starting this task from scratch?**
 7. **What lessons should future engineers learn from this work?**
 
+## Root Cause Closure Rule
+
+Every completed investigation must end with a section titled:
+
+### Root Cause Closure
+
+It should answer:
+
+1. **What was the original symptom?**
+2. **What was the actual root cause?**
+3. **Which incorrect hypotheses were eliminated?**
+4. **What evidence proved the true root cause?**
+5. **What permanent change prevents this class of issue in the future?**
+6. **How would another engineer recognize this issue in under five minutes if it ever happens again?**
+
+
 
 
 
