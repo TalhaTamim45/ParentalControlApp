@@ -27,6 +27,19 @@ class MainActivity : ComponentActivity() {
             Timber.i("Notification permission request result: isGranted=%s", isGranted)
         }
 
+    private val requestLocationPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
+            val fineGranted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true
+            val coarseGranted = permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+            if (fineGranted || coarseGranted) {
+                Timber.i("Foreground location permission granted by user")
+                viewModel.requestOneTimeLocationFix()
+            } else {
+                Timber.w("Foreground location permission denied by user")
+                viewModel.updateLocationStatus("Location permission denied by user")
+            }
+        }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -52,9 +65,24 @@ class MainActivity : ComponentActivity() {
                     onPairingCodeChanged = viewModel::onPairingCodeChanged,
                     onServerUrlChanged = viewModel::onServerUrlChanged,
                     onPairClicked = viewModel::pairDevice,
-                    onUnpairClicked = viewModel::unpairDevice
+                    onUnpairClicked = viewModel::unpairDevice,
+                    onLocationFixClicked = {
+                        val hasFine = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+                        val hasCoarse = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+                        if (hasFine || hasCoarse) {
+                            viewModel.requestOneTimeLocationFix()
+                        } else {
+                            requestLocationPermissionLauncher.launch(
+                                arrayOf(
+                                    Manifest.permission.ACCESS_FINE_LOCATION,
+                                    Manifest.permission.ACCESS_COARSE_LOCATION
+                                )
+                            )
+                        }
+                    }
                 )
             }
         }
     }
 }
+

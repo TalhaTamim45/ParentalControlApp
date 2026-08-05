@@ -2,9 +2,11 @@ const presenceService = require('../services/presenceService');
 const deviceService = require('../services/deviceService');
 
 function registerSocketHandlers(io, socket) {
+  presenceService.setIo(io);
   if (socket.role === 'parent') {
     socket.join('parent_room');
     console.log(`[Socket] Parent client connected: ${socket.id}`);
+
   } else if (socket.role === 'child' && socket.device) {
     const deviceId = socket.device.id;
     socket.join(`device_${deviceId}`);

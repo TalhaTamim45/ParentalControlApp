@@ -3,11 +3,14 @@ const fs = require('fs');
 const path = require('path');
 const env = require('../config/env');
 
-const isPostgresEnabled = !!(process.env.PGHOST || process.env.DATABASE_URL);
+const isPostgresEnabled = env.STORAGE_MODE === 'postgres';
 
 let pool = null;
 
 if (isPostgresEnabled) {
+  if (!process.env.PGHOST && !process.env.DATABASE_URL) {
+    throw new Error('[Storage] STORAGE_MODE is set to "postgres" but neither PGHOST nor DATABASE_URL is configured in environment.');
+  }
   pool = new Pool({
     connectionString: process.env.DATABASE_URL,
     host: process.env.PGHOST,

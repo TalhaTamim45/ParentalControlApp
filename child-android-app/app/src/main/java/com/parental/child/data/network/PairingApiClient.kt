@@ -239,6 +239,38 @@ class PairingApiClient @Inject constructor(
     }
 
     /**
+     * Submits one authenticated location payload fix to POST /api/location/update (Milestone 1.1).
+     */
+    fun sendLocationFix(serverUrl: String, authToken: String, payload: Map<String, Any?>): HeartbeatResponse {
+        val baseUrl = normalizeUrl(serverUrl)
+        val endpoint = "$baseUrl/api/location/update"
+        val jsonPayload = JSONObject(payload).toString()
+
+        val request = Request.Builder()
+            .url(endpoint)
+            .post(jsonPayload.toRequestBody(jsonMediaType))
+            .header("x-device-token", authToken)
+            .build()
+
+        return try {
+            client.newCall(request).execute().use { response ->
+                val bodyStr = response.body?.string() ?: ""
+                val json = if (bodyStr.isNotEmpty()) JSONObject(bodyStr) else JSONObject()
+                if (response.isSuccessful && json.optBoolean("success", false)) {
+                    HeartbeatResponse(success = true, timestamp = json.optLong("receivedAt", System.currentTimeMillis()))
+                } else {
+                    val serverErr = json.optString("error", "Location update rejected (${response.code})")
+                    HeartbeatResponse(success = false, error = serverErr)
+                }
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Location upload error: %s", endpoint)
+            HeartbeatResponse(success = false, error = e.localizedMessage)
+        }
+    }
+
+
+    /**
      * Traverses the exception cause chain to find the root cause.
      */
     private fun findRootCause(e: Throwable): Throwable {

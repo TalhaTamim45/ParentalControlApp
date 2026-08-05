@@ -30,6 +30,7 @@ loadEnv();
 
 module.exports = {
   PORT: process.env.PORT || 4000,
+  STORAGE_MODE: (process.env.STORAGE_MODE || 'json').toLowerCase(),
   PARENT_USERNAME: process.env.PARENT_USERNAME || 'parent',
   PARENT_PASSWORD: process.env.PARENT_PASSWORD || 'ParentSecretPass123!',
   PARENT_SESSION_SECRET: process.env.PARENT_SESSION_SECRET || 'dev_parent_session_secret_key'

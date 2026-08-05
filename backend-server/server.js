@@ -9,6 +9,8 @@ const { runMigrations } = require('./src/storage/dbPool');
 const parentAuthRoutes = require('./src/routes/parentAuthRoutes');
 const pairingRoutes = require('./src/routes/pairingRoutes');
 const deviceRoutes = require('./src/routes/deviceRoutes');
+const locationRoutes = require('./src/routes/locationRoutes');
+
 
 const { socketAuthenticate } = require('./src/socket/socketAuth');
 const { registerSocketHandlers } = require('./src/socket/socketHandler');
@@ -50,6 +52,8 @@ app.use((req, res, next) => {
 app.use('/api/parent', parentAuthRoutes);
 app.use('/api/pairing', pairingRoutes);
 app.use('/api/devices', deviceRoutes);
+app.use('/api/location', locationRoutes);
+
 
 // General Status Endpoint (Public health check)
 app.get('/api/status', (req, res) => {

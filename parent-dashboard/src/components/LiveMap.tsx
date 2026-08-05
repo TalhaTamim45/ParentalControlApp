@@ -29,32 +29,27 @@ const childIcon = L.divIcon({
   popupAnchor: [0, -20]
 });
 
-interface Location {
+export interface LocationFix {
   lat: number;
   lng: number;
   accuracy?: number;
   speed?: number;
-  timestamp: number;
-  address?: string;
-}
-
-interface Geofence {
-  id: string;
-  name: string;
-  lat: number;
-  lng: number;
-  radiusMeters: number;
-  active: boolean;
+  batteryPercent?: number;
+  isCharging?: boolean;
+  recordedAt?: number;
+  receivedAt?: number;
+  isStale?: boolean;
+  provider?: string;
 }
 
 interface LiveMapProps {
-  currentLocation: Location;
-  locationHistory: Location[];
-  geofences: Geofence[];
+  currentLocation: LocationFix | null;
+  deviceName?: string;
+  onRefresh?: () => void;
 }
 
-// Subcomponent to smoothly recalculate map center on location update
 const RecenterMap: React.FC<{ lat: number; lng: number }> = ({ lat, lng }) => {
+
   const map = useMap();
   useEffect(() => {
     map.panTo([lat, lng], { animate: true });
@@ -64,28 +59,68 @@ const RecenterMap: React.FC<{ lat: number; lng: number }> = ({ lat, lng }) => {
 
 export const LiveMap: React.FC<LiveMapProps> = ({
   currentLocation,
-  locationHistory,
-  geofences
+  deviceName = "Child Phone",
+  onRefresh
 }) => {
+  if (!currentLocation) {
+    return (
+      <div className="glass-panel rounded-2xl p-8 border border-slate-800 h-[480px] flex flex-col items-center justify-center text-center space-y-4">
+        <div className="w-14 h-14 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center text-blue-400">
+          <MapPin className="w-7 h-7" />
+        </div>
+        <h3 className="text-lg font-bold text-white">Location Unavailable</h3>
+        <p className="text-xs text-slate-400 max-w-sm">
+          No genuine GPS location fix has been received for <strong className="text-slate-200">{deviceName}</strong> yet.
+          Tap "Share Location Fix" in the Child app to send a fix.
+        </p>
+        {onRefresh && (
+          <button
+            onClick={onRefresh}
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl transition"
+          >
+            Refresh Location Status
+          </button>
+        )}
+      </div>
+    );
+  }
+
   const position: [number, number] = [currentLocation.lat, currentLocation.lng];
-  const polylineCoords: [number, number][] = locationHistory.map(l => [l.lat, l.lng]);
 
   return (
     <div className="glass-panel rounded-2xl p-4 border border-slate-800 h-[480px] relative overflow-hidden flex flex-col">
       <div className="flex items-center justify-between mb-3 px-2">
         <div className="flex items-center gap-2">
           <MapPin className="w-5 h-5 text-blue-400" />
-          <h2 className="text-lg font-bold text-white">Live GPS Location & History</h2>
+          <h2 className="text-lg font-bold text-white">Genuine Child GPS Location</h2>
+          {currentLocation.isStale ? (
+            <span className="px-2 py-0.5 bg-amber-500/20 text-amber-300 text-[10px] font-bold rounded-md border border-amber-500/30">
+              STALE (&gt;15m)
+            </span>
+          ) : (
+            <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-300 text-[10px] font-bold rounded-md border border-emerald-500/30">
+              FRESH
+            </span>
+          )}
         </div>
-        <div className="flex items-center gap-3 text-xs text-slate-400">
+        <div className="flex items-center gap-2 text-xs text-slate-400">
           <span className="flex items-center gap-1 bg-slate-900/90 px-2.5 py-1 rounded-lg border border-slate-800">
             <Navigation className="w-3.5 h-3.5 text-blue-400" />
-            Speed: {currentLocation.speed || 0} km/h
+            Accuracy: {currentLocation.accuracy ? `${currentLocation.accuracy.toFixed(1)}m` : 'N/A'}
           </span>
-          <span className="flex items-center gap-1 bg-slate-900/90 px-2.5 py-1 rounded-lg border border-slate-800">
-            <Clock className="w-3.5 h-3.5 text-indigo-400" />
-            Updated: {new Date(currentLocation.timestamp).toLocaleTimeString()}
-          </span>
+          {currentLocation.batteryPercent !== undefined && (
+            <span className="flex items-center gap-1 bg-slate-900/90 px-2.5 py-1 rounded-lg border border-slate-800 text-slate-200 font-medium">
+              🔋 {currentLocation.batteryPercent}% {currentLocation.isCharging ? '(Charging)' : ''}
+            </span>
+          )}
+          {onRefresh && (
+            <button
+              onClick={onRefresh}
+              className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-semibold"
+            >
+              Refresh
+            </button>
+          )}
         </div>
       </div>
 
@@ -108,48 +143,22 @@ export const LiveMap: React.FC<LiveMapProps> = ({
           <Circle
             center={position}
             radius={currentLocation.accuracy || 20}
-            pathOptions={{ color: '#3b82f6', fillColor: '#3b82f6', fillOpacity: 0.15, weight: 1 }}
+            pathOptions={{ color: '#3b82f6', fillColor: '#3b82f6', fillOpacity: 0.15, weight: 1.5 }}
           />
-
-          {/* Breadcrumb Path History */}
-          {polylineCoords.length > 1 && (
-            <Polyline
-              positions={polylineCoords}
-              pathOptions={{ color: '#6366f1', weight: 4, dashArray: '6, 8', opacity: 0.8 }}
-            />
-          )}
-
-          {/* Geofence Overlay Circles */}
-          {geofences.map(gf => (
-            <Circle
-              key={gf.id}
-              center={[gf.lat, gf.lng]}
-              radius={gf.radiusMeters}
-              pathOptions={{
-                color: '#10b981',
-                fillColor: '#10b981',
-                fillOpacity: 0.1,
-                weight: 2,
-                dashArray: '4, 4'
-              }}
-            >
-              <Popup>
-                <div className="p-1 text-slate-100 font-sans">
-                  <strong className="text-emerald-400 text-sm">Safe Zone: {gf.name}</strong>
-                  <p className="text-xs text-slate-300 m-0 mt-1">Radius: {gf.radiusMeters}m</p>
-                </div>
-              </Popup>
-            </Circle>
-          ))}
 
           {/* Current Child Marker */}
           <Marker position={position} icon={childIcon}>
             <Popup>
-              <div className="p-1 text-slate-100 font-sans">
-                <strong className="text-blue-400 text-sm">Child's Phone Location</strong>
-                <p className="text-xs text-slate-300 mt-1 mb-0">
-                  {currentLocation.address || `${currentLocation.lat.toFixed(5)}, ${currentLocation.lng.toFixed(5)}`}
-                </p>
+              <div className="p-1 text-slate-900 font-sans text-xs space-y-1">
+                <strong className="text-blue-600 text-sm block">{deviceName}</strong>
+                <p className="m-0 text-slate-700 font-mono">Lat: {currentLocation.lat.toFixed(5)}, Lng: {currentLocation.lng.toFixed(5)}</p>
+                <p className="m-0 text-slate-600">Accuracy: {currentLocation.accuracy ? `${currentLocation.accuracy.toFixed(1)} meters` : 'Unknown'}</p>
+                {currentLocation.recordedAt && (
+                  <p className="m-0 text-slate-500 text-[10px]">Recorded: {new Date(currentLocation.recordedAt).toLocaleString()}</p>
+                )}
+                {currentLocation.receivedAt && (
+                  <p className="m-0 text-slate-500 text-[10px]">Received: {new Date(currentLocation.receivedAt).toLocaleString()}</p>
+                )}
               </div>
             </Popup>
           </Marker>
@@ -158,3 +167,4 @@ export const LiveMap: React.FC<LiveMapProps> = ({
     </div>
   );
 };
+

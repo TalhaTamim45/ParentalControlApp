@@ -3,6 +3,7 @@ import { io, Socket } from 'socket.io-client';
 import { Header } from './components/Header';
 import { ParentLogin } from './components/ParentLogin';
 import { DeviceManager, DeviceItem } from './components/DeviceManager';
+import { LiveMap, LocationFix } from './components/LiveMap';
 import { MapPin, Eye, AppWindow, Bell, ShieldCheck, Smartphone, Construction } from 'lucide-react';
 
 const BACKEND_URL = (import.meta as any).env?.VITE_BACKEND_URL || window.location.origin;
@@ -14,6 +15,8 @@ export const App: React.FC = () => {
 
   const [registeredDevices, setRegisteredDevices] = useState<DeviceItem[]>([]);
   const [activeDevice, setActiveDevice] = useState<{ id: string; name: string; online: boolean } | null>(null);
+  const [latestLocation, setLatestLocation] = useState<LocationFix | null>(null);
+
 
   // Fetch real registered devices list
   const fetchRegisteredDevices = useCallback(async () => {
@@ -41,6 +44,33 @@ export const App: React.FC = () => {
       console.error('Failed to fetch devices:', err);
     }
   }, [parentToken]);
+
+  // Fetch latest location fix for active device
+  const fetchLatestLocation = useCallback(async () => {
+    if (!parentToken || !activeDevice) return;
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/location/latest/${activeDevice.id}`, {
+        headers: { 'x-parent-token': parentToken }
+      });
+      const data = await res.json();
+      if (data.success && data.location) {
+        setLatestLocation({
+          lat: data.location.latitude,
+          lng: data.location.longitude,
+          accuracy: data.location.horizontalAccuracyMeters,
+          speed: data.location.speedMetersPerSecond,
+          batteryPercent: data.location.batteryPercent,
+          isCharging: data.location.isCharging,
+          recordedAt: data.location.recordedAt,
+          receivedAt: data.location.receivedAt,
+          isStale: data.location.isStale,
+          provider: data.location.provider
+        });
+      }
+    } catch (err) {
+      console.error('Failed to fetch latest location:', err);
+    }
+  }, [parentToken, activeDevice]);
 
   // Handle Socket & Device sync
   useEffect(() => {
@@ -80,10 +110,34 @@ export const App: React.FC = () => {
       });
     });
 
+    newSocket.on('location_changed', (data) => {
+      console.log('[Socket] Received real-time location_changed:', data);
+      if (data && data.latitude && data.longitude) {
+        setLatestLocation({
+          lat: data.latitude,
+          lng: data.longitude,
+          accuracy: data.horizontalAccuracyMeters,
+          batteryPercent: data.batteryPercent,
+          isCharging: data.isCharging,
+          recordedAt: data.recordedAt,
+          receivedAt: data.receivedAt,
+          isStale: false
+        });
+      }
+    });
+
     return () => {
       newSocket.disconnect();
     };
   }, [parentToken, fetchRegisteredDevices]);
+
+  // Fetch location on tab or device change
+  useEffect(() => {
+    if (activeTab === 'map' && activeDevice) {
+      fetchLatestLocation();
+    }
+  }, [activeTab, activeDevice, fetchLatestLocation]);
+
 
   const handleLogout = () => {
     if (parentToken) {
@@ -199,21 +253,30 @@ export const App: React.FC = () => {
           />
         )}
 
-        {activeTab !== 'devices' && (
+        {activeTab === 'map' && (
+          <LiveMap
+            currentLocation={latestLocation}
+            deviceName={activeDevice ? activeDevice.name : "Child Device"}
+            onRefresh={fetchLatestLocation}
+          />
+        )}
+
+        {activeTab !== 'devices' && activeTab !== 'map' && (
           <div className="glass-panel p-12 rounded-2xl border border-slate-800 text-center space-y-4">
             <div className="w-14 h-14 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center mx-auto text-amber-400">
               <Construction className="w-7 h-7" />
             </div>
             <h3 className="text-lg font-bold text-white">Not Implemented Yet</h3>
             <p className="text-xs text-slate-400 max-w-md mx-auto leading-relaxed">
-              This feature is scheduled for a future development milestone.
+              This feature is scheduled for a future development milestone (Milestone 1.2+).
               Per project architecture rules, no simulated or mock data is displayed.
             </p>
             <span className="inline-block px-3 py-1 bg-amber-500/10 border border-amber-500/20 text-amber-300 text-[11px] font-semibold rounded-full">
-              Milestone 3 Focus: Secure Pairing & Registration Only
+              Milestone 1.1 Focus: One Genuine GPS Location Foundation Only
             </span>
           </div>
         )}
+
       </main>
     </div>
   );

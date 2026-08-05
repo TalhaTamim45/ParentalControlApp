@@ -32,8 +32,10 @@ fun PairingScreen(
     onPairingCodeChanged: (String) -> Unit,
     onServerUrlChanged: (String) -> Unit,
     onPairClicked: () -> Unit,
-    onUnpairClicked: () -> Unit
+    onUnpairClicked: () -> Unit,
+    onLocationFixClicked: () -> Unit = {}
 ) {
+
     val scrollState = rememberScrollState()
     val context = LocalContext.current
     val batteryManager = remember { BatteryOptimizationManager(context) }
@@ -119,6 +121,36 @@ fun PairingScreen(
                                     modifier = Modifier.padding(12.dp),
                                     textAlign = TextAlign.Center
                                 )
+                            }
+                        }
+
+                        // Server Health Check Status
+                        uiState.healthCheckStatus?.let { status ->
+                            val isHealthy = status.startsWith("Reachable")
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(bottom = 16.dp),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = if (isHealthy) Color(0x3310B981) else Color(0x33F59E0B)
+                                ),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Column(modifier = Modifier.padding(12.dp)) {
+                                    Text(
+                                        text = if (isHealthy) "✅ Server $status" else "⚠️ Server: $status",
+                                        color = if (isHealthy) Color(0xFF34D399) else Color(0xFFFBBF24),
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                    uiState.healthCheckTls?.let { tls ->
+                                        Text(
+                                            text = "TLS: $tls",
+                                            color = Color(0xFF94A3B8),
+                                            fontSize = 11.sp
+                                        )
+                                    }
+                                }
                             }
                         }
 
@@ -318,6 +350,44 @@ fun PairingScreen(
                                 }
                             }
                         }
+
+                        // Milestone 1.1 Location Status Card
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 12.dp),
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFF0B0F19)),
+                            shape = RoundedCornerShape(16.dp)
+                        ) {
+                            Column(modifier = Modifier.padding(14.dp)) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(bottom = 6.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text("Location Status (M1.1):", color = Color(0xFF94A3B8), fontSize = 12.sp)
+                                    Text(
+                                        text = uiState.locationStatus,
+                                        color = if (uiState.locationStatus.startsWith("Location successfully shared")) Color(0xFF34D399) else Color(0xFFF59E0B),
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 11.sp
+                                    )
+                                }
+
+                                Button(
+                                    onClick = onLocationFixClicked,
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0EA5E9)),
+                                    shape = RoundedCornerShape(8.dp),
+                                    modifier = Modifier.fillMaxWidth().height(36.dp),
+                                    contentPadding = PaddingValues(0.dp)
+                                ) {
+                                    Text("SHARE ONE-TIME GPS LOCATION FIX", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                }
+                            }
+                        }
+
 
                         // Battery Optimization Status Card
                         Card(

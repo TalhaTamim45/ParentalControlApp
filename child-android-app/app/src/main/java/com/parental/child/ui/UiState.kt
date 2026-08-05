@@ -18,5 +18,14 @@ data class LauncherUiState(
 
     // Presence & Heartbeat Status
     val connectionStatus: String = "Disconnected",
-    val lastHeartbeatTimestamp: Long? = null
+    val lastHeartbeatTimestamp: Long? = null,
+
+    // Server Health Check
+    val healthCheckStatus: String? = null,
+    val healthCheckTls: String? = null,
+
+    // Milestone 1.1 Location Status
+    val locationStatus: String = "Not requested",
+    val locationLastSentAt: Long? = null
 )
+

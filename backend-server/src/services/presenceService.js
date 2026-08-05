@@ -40,9 +40,25 @@ function formatDeviceWithPresence(device) {
   };
 }
 
+let ioInstance = null;
+
+function setIo(io) {
+  ioInstance = io;
+}
+
+function broadcastLocationChanged(deviceId, data) {
+  if (ioInstance) {
+    ioInstance.to('parent_room').emit('location_changed', data);
+    console.log(`[PresenceService] Broadcasted location_changed for ${deviceId} to parent_room`);
+  }
+}
+
 module.exports = {
+  setIo,
   addActiveSocket,
   removeActiveSocket,
   isDeviceOnline,
-  formatDeviceWithPresence
+  formatDeviceWithPresence,
+  broadcastLocationChanged
 };
+

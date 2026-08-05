@@ -30,3 +30,7 @@ app/build/
 .DS_Store
 Thumbs.db
 *.log
+
+# Scratch Workspace
+scratch/
+

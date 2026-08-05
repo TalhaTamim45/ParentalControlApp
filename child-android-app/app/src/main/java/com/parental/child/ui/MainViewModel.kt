@@ -13,11 +13,15 @@ import kotlinx.coroutines.launch
 import timber.log.Timber
 import javax.inject.Inject
 
+import com.parental.child.location.LocationTracker
+
 @HiltViewModel
 class MainViewModel @Inject constructor(
     private val pairingRepository: PairingRepository,
-    private val presenceCoordinator: PresenceCoordinator
+    private val presenceCoordinator: PresenceCoordinator,
+    private val locationTracker: LocationTracker
 ) : ViewModel() {
+
 
     private val defaultDeviceName = "${Build.MANUFACTURER.capitalize()} ${Build.MODEL}"
 
@@ -36,6 +40,7 @@ class MainViewModel @Inject constructor(
 
     init {
         checkInitialPairingState()
+        runHealthCheck()
 
         // Register listener for remote device unpair
         presenceCoordinator.onRemoteUnpairedListener = {
@@ -61,6 +66,38 @@ class MainViewModel @Inject constructor(
         viewModelScope.launch {
             presenceCoordinator.lastHeartbeatTime.collect { ts ->
                 _uiState.update { it.copy(lastHeartbeatTimestamp = ts) }
+            }
+        }
+    }
+
+    /**
+     * Runs a TLS health check against the configured server URL on startup.
+     * This verifies that the Android device can complete a standard HTTPS connection
+     * before any pairing is attempted.
+     */
+    private fun runHealthCheck() {
+        viewModelScope.launch {
+            val serverUrl = _uiState.value.serverUrl.ifEmpty { BuildConfig.SERVER_BASE_URL }
+            _uiState.update { it.copy(healthCheckStatus = "Checking...") }
+
+            val result = pairingRepository.checkServerHealth(serverUrl)
+            if (result.reachable) {
+                Timber.i("Health check passed -> HTTP %d | TLS: %s | %d ms",
+                    result.httpStatus, result.tlsProtocol, result.durationMs)
+                _uiState.update {
+                    it.copy(
+                        healthCheckStatus = "Reachable (HTTP ${result.httpStatus})",
+                        healthCheckTls = result.tlsProtocol
+                    )
+                }
+            } else {
+                Timber.w("Health check failed -> %s [%s]", result.error, result.errorCode)
+                _uiState.update {
+                    it.copy(
+                        healthCheckStatus = "Failed: ${result.error} [${result.errorCode}]",
+                        healthCheckTls = null
+                    )
+                }
             }
         }
     }
@@ -160,7 +197,47 @@ class MainViewModel @Inject constructor(
         }
     }
 
+    fun updateLocationStatus(status: String) {
+        _uiState.update { it.copy(locationStatus = status) }
+    }
+
+    fun requestOneTimeLocationFix(batteryPercent: Int = 100, isCharging: Boolean = false) {
+        if (!pairingRepository.isPaired()) {
+            _uiState.update { it.copy(locationStatus = "Device not paired") }
+            return
+        }
+
+        _uiState.update { it.copy(locationStatus = "Obtaining GPS location fix...") }
+
+        locationTracker.getCurrentLocationFix(
+            batteryPercent = batteryPercent,
+            isCharging = isCharging,
+            onSuccess = { payload ->
+                viewModelScope.launch {
+                    _uiState.update { it.copy(locationStatus = "Sending location payload...") }
+                    val ok = pairingRepository.uploadLocationFix(payload)
+                    if (ok) {
+                        val ts = System.currentTimeMillis()
+                        _uiState.update {
+                            it.copy(
+                                locationStatus = "Location successfully shared",
+                                locationLastSentAt = ts
+                            )
+                        }
+                        Timber.i("Milestone 1.1 single location fix uploaded successfully")
+                    } else {
+                        _uiState.update { it.copy(locationStatus = "Location upload failed") }
+                    }
+                }
+            },
+            onError = { err ->
+                _uiState.update { it.copy(locationStatus = "Location unavailable: $err") }
+            }
+        )
+    }
+
     private fun String.capitalize(): String {
         return replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
     }
 }
+

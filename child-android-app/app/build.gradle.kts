@@ -28,8 +28,9 @@ android {
             useSupportLibrary = true
         }
 
-        val devServerUrl = project.findProperty("SERVER_BASE_URL") as String? ?: "http://10.0.2.2:4000"
+        val devServerUrl = project.findProperty("SERVER_BASE_URL") as String? ?: "https://jessica-williams-concern-chemical.trycloudflare.com"
         buildConfigField("String", "SERVER_BASE_URL", "\"$devServerUrl\"")
+
         buildConfigField("String", "ENVIRONMENT", "\"Development / Active Pairing\"")
         buildConfigField("String", "BUILD_DATE", "\"${buildDate.get()}\"")
     }
@@ -84,4 +85,6 @@ dependencies {
     implementation(libs.timber)
     implementation(libs.okhttp)
     implementation(libs.socket.io.client)
+    implementation("com.google.android.gms:play-services-location:21.2.0")
 }
+

@@ -1,6 +1,7 @@
 package com.parental.child.data.pairing
 
 import com.parental.child.BuildConfig
+import com.parental.child.data.network.HealthCheckResult
 import com.parental.child.data.credentials.CredentialManager
 import com.parental.child.data.network.PairingApiClient
 import kotlinx.coroutines.Dispatchers
@@ -56,8 +57,23 @@ class PairingRepository @Inject constructor(
             }
         }
 
+    suspend fun checkServerHealth(customServerUrl: String? = null): HealthCheckResult =
+        withContext(Dispatchers.IO) {
+            val serverUrl = customServerUrl?.takeIf { it.isNotBlank() } ?: getServerUrl()
+            apiClient.checkServerHealth(serverUrl)
+        }
+
     fun unpairLocalDevice() {
         credentialManager.clearCredentials()
         Timber.i("Local device state un-paired")
     }
+
+    suspend fun uploadLocationFix(payload: Map<String, Any?>): Boolean =
+        withContext(Dispatchers.IO) {
+            val serverUrl = getServerUrl()
+            val token = getAuthToken() ?: return@withContext false
+            val res = apiClient.sendLocationFix(serverUrl, token, payload)
+            res.success
+        }
 }
+
