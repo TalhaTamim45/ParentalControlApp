@@ -201,12 +201,19 @@ class MainViewModel @Inject constructor(
         _uiState.update { it.copy(locationStatus = status) }
     }
 
+    private var isLocationUploading = false
+
     fun requestOneTimeLocationFix(batteryPercent: Int = 100, isCharging: Boolean = false) {
+        if (isLocationUploading) {
+            Timber.w("Location fix request ignored: Upload already in progress")
+            return
+        }
         if (!pairingRepository.isPaired()) {
             _uiState.update { it.copy(locationStatus = "Device not paired") }
             return
         }
 
+        isLocationUploading = true
         _uiState.update { it.copy(locationStatus = "Obtaining GPS location fix...") }
 
         locationTracker.getCurrentLocationFix(
@@ -216,6 +223,7 @@ class MainViewModel @Inject constructor(
                 viewModelScope.launch {
                     _uiState.update { it.copy(locationStatus = "Sending location payload...") }
                     val ok = pairingRepository.uploadLocationFix(payload)
+                    isLocationUploading = false
                     if (ok) {
                         val ts = System.currentTimeMillis()
                         _uiState.update {
@@ -231,6 +239,7 @@ class MainViewModel @Inject constructor(
                 }
             },
             onError = { err ->
+                isLocationUploading = false
                 _uiState.update { it.copy(locationStatus = "Location unavailable: $err") }
             }
         )

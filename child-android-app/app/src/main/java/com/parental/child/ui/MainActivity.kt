@@ -35,8 +35,15 @@ class MainActivity : ComponentActivity() {
                 Timber.i("Foreground location permission granted by user")
                 viewModel.requestOneTimeLocationFix()
             } else {
-                Timber.w("Foreground location permission denied by user")
-                viewModel.updateLocationStatus("Location permission denied by user")
+                val shouldShowFine = shouldShowRequestPermissionRationale(Manifest.permission.ACCESS_FINE_LOCATION)
+                val shouldShowCoarse = shouldShowRequestPermissionRationale(Manifest.permission.ACCESS_COARSE_LOCATION)
+                if (!shouldShowFine && !shouldShowCoarse) {
+                    Timber.w("Location permission permanently denied. Directing user to Settings.")
+                    viewModel.updateLocationStatus("Location permission permanently denied. Enable in App Settings.")
+                } else {
+                    Timber.w("Foreground location permission denied by user")
+                    viewModel.updateLocationStatus("Location permission denied by user")
+                }
             }
         }
 

@@ -102,6 +102,11 @@ export const LiveMap: React.FC<LiveMapProps> = ({
               FRESH
             </span>
           )}
+          {currentLocation.accuracy && currentLocation.accuracy > 100 && (
+            <span className="px-2 py-0.5 bg-rose-500/20 text-rose-300 text-[10px] font-bold rounded-md border border-rose-500/30">
+              POOR ACCURACY (&gt;100m)
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-2 text-xs text-slate-400">
           <span className="flex items-center gap-1 bg-slate-900/90 px-2.5 py-1 rounded-lg border border-slate-800">

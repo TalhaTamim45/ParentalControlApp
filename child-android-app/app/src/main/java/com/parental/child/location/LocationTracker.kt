@@ -72,6 +72,16 @@ class LocationTracker @Inject constructor(
         }
     }
 
+    private val prefs = context.getSharedPreferences("location_tracker_prefs", Context.MODE_PRIVATE)
+
+    @Synchronized
+    private fun getNextSequenceNumber(): Long {
+        val currentSeq = prefs.getLong("key_location_sequence", 0L)
+        val nextSeq = currentSeq + 1L
+        prefs.edit().putLong("key_location_sequence", nextSeq).apply()
+        return nextSeq
+    }
+
     private fun buildLocationPayload(
         location: Location,
         batteryPercent: Int,
@@ -84,10 +94,12 @@ class LocationTracker @Inject constructor(
             location.isFromMockProvider
         }
 
+        val sequenceNum = getNextSequenceNumber()
+
         return mapOf(
             "schemaVersion" to 1,
             "eventId" to "evt_loc_${UUID.randomUUID().toString().replace("-", "").take(16)}",
-            "sequenceNumber" to System.currentTimeMillis(),
+            "sequenceNumber" to sequenceNum,
             "latitude" to location.latitude,
             "longitude" to location.longitude,
             "horizontalAccuracyMeters" to location.accuracy.toDouble(),

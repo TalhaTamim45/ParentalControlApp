@@ -82,7 +82,13 @@ function validateAndConsumePairingCode(submittedCode) {
   return { valid: true };
 }
 
+function invalidateAllPairingCodes() {
+  pairingCodeStore.clear();
+}
+
 module.exports = {
   createPairingCode,
-  validateAndConsumePairingCode
+  validateAndConsumePairingCode,
+  invalidateAllPairingCodes
 };
+

@@ -1,4 +1,4 @@
-const storage = require('../storage/dbPool');
+const { getDb, saveDb } = require('../storage/devStorage');
 const presenceService = require('./presenceService');
 
 // In-memory set for eventId idempotency (Milestone 1.1)
@@ -12,14 +12,14 @@ class LocationService {
      * Device identity is derived EXCLUSIVELY from tokenAuth.deviceId.
      */
     updateLocationFix(tokenDevice, payload) {
-        if (!tokenDevice || !tokenDevice.deviceId) {
+        const deviceId = tokenDevice ? (tokenDevice.id || tokenDevice.deviceId) : null;
+        if (!deviceId) {
             return { success: false, error: 'Unauthorized device token', status: 401 };
         }
 
-        const deviceId = tokenDevice.deviceId;
-
         // Verify device is active and not revoked
-        const deviceRecord = storage.getDevice(deviceId);
+        const db = getDb();
+        const deviceRecord = db.devices[deviceId];
         if (!deviceRecord || deviceRecord.revokedAt) {
             return { success: false, error: 'Device is revoked or un-paired', status: 403 };
         }
@@ -38,6 +38,11 @@ class LocationService {
             isMockLocation
         } = payload;
 
+        // Schema version validation (must be 1 if specified)
+        if (schemaVersion !== undefined && schemaVersion !== 1) {
+            return { success: false, error: 'Unsupported schema version', status: 400 };
+        }
+
         if (!eventId || typeof eventId !== 'string') {
             return { success: false, error: 'Invalid or missing eventId', status: 400 };
         }
@@ -54,6 +59,16 @@ class LocationService {
         }
         if (typeof longitude !== 'number' || longitude < -180.0 || longitude > 180.0) {
             return { success: false, error: 'Invalid longitude range (-180 to 180)', status: 400 };
+        }
+
+        // Accuracy validation
+        if (typeof horizontalAccuracyMeters === 'number' && horizontalAccuracyMeters < 0) {
+            return { success: false, error: 'Negative accuracy rejected', status: 400 };
+        }
+
+        // Battery percentage validation
+        if (typeof batteryPercent === 'number' && (batteryPercent < 0 || batteryPercent > 100)) {
+            return { success: false, error: 'Battery percentage out of range (0-100)', status: 400 };
         }
 
         // Timestamp skew validation (reject future timestamps > 5 min)
@@ -96,7 +111,7 @@ class LocationService {
         deviceRecord.lastLocation = locationData;
         deviceRecord.lastSeen = receivedAt;
         deviceRecord.updatedAt = receivedAt;
-        storage.saveDevice(deviceRecord);
+        saveDb();
 
         // Sanitized Log (Zero exact coordinates printed)
         console.log(`[LocationService] Location fix saved for ${deviceId} | Acc: ${accuracy}m | Batt: ${batt}% | EventID: ${eventId}`);
@@ -121,7 +136,8 @@ class LocationService {
      * Gets latest location fix for parent query.
      */
     getLatestLocation(deviceId) {
-        const deviceRecord = storage.getDevice(deviceId);
+        const db = getDb();
+        const deviceRecord = db.devices[deviceId];
         if (!deviceRecord || deviceRecord.revokedAt) {
             return { success: false, error: 'Device not found or revoked', status: 404 };
         }

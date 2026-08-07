@@ -1,15 +1,15 @@
 const express = require('express');
 const router = express.Router();
 const locationService = require('../services/locationService');
-const { authenticateDeviceToken, authenticateParentSession } = require('../middleware/authMiddleware');
+const { requireDeviceAuth, requireParentAuth } = require('../middleware/authMiddleware');
 
 /**
  * Ingest one location fix (Milestone 1.1).
  * Device identity is derived EXCLUSIVELY from x-device-token header via middleware.
  */
-router.post('/update', authenticateDeviceToken, (req, res) => {
+router.post('/update', requireDeviceAuth, (req, res) => {
     try {
-        const result = locationService.updateLocationFix(req.tokenAuth, req.body);
+        const result = locationService.updateLocationFix(req.device, req.body);
         if (!result.success) {
             return res.status(result.status || 400).json(result);
         }
@@ -24,7 +24,7 @@ router.post('/update', authenticateDeviceToken, (req, res) => {
  * Fetch latest location fix for parent query.
  * Requires authenticated parent session.
  */
-router.get('/latest/:deviceId', authenticateParentSession, (req, res) => {
+router.get('/latest/:deviceId', requireParentAuth, (req, res) => {
     try {
         const { deviceId } = req.params;
         const result = locationService.getLatestLocation(deviceId);

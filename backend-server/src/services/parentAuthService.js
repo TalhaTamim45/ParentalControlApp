@@ -79,8 +79,14 @@ function logout(token) {
   return { success: true };
 }
 
+function invalidateAllSessions() {
+  parentSessions.clear();
+}
+
 module.exports = {
   login,
   validateParentToken,
-  logout
+  logout,
+  invalidateAllSessions
 };
+

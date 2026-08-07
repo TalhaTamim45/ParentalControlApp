@@ -33,9 +33,18 @@ class PairingRepository @Inject constructor(
 
     fun saveServerUrl(url: String) = credentialManager.saveServerUrl(url)
 
+    fun isServerUrlConfigured(url: String = getServerUrl()): Boolean {
+        if (url.isBlank()) return false
+        if (url.contains("unconfigured-dev-server.invalid")) return false
+        return true
+    }
+
     suspend fun pairDevice(code: String, deviceName: String, customServerUrl: String? = null): PairingResult =
         withContext(Dispatchers.IO) {
             val serverUrl = customServerUrl?.takeIf { it.isNotBlank() } ?: getServerUrl()
+            if (!isServerUrlConfigured(serverUrl)) {
+                return@withContext PairingResult.Error("Server configuration missing: SERVER_BASE_URL is unconfigured in local.properties")
+            }
             if (customServerUrl != null && customServerUrl.isNotBlank()) {
                 saveServerUrl(customServerUrl)
             }
@@ -60,6 +69,16 @@ class PairingRepository @Inject constructor(
     suspend fun checkServerHealth(customServerUrl: String? = null): HealthCheckResult =
         withContext(Dispatchers.IO) {
             val serverUrl = customServerUrl?.takeIf { it.isNotBlank() } ?: getServerUrl()
+            if (!isServerUrlConfigured(serverUrl)) {
+                return@withContext HealthCheckResult(
+                    reachable = false,
+                    httpStatus = 0,
+                    tlsProtocol = null,
+                    durationMs = 0,
+                    error = "Server configuration missing: SERVER_BASE_URL is unconfigured",
+                    errorCode = "ERR_UNCONFIGURED_SERVER"
+                )
+            }
             apiClient.checkServerHealth(serverUrl)
         }
 
@@ -71,6 +90,10 @@ class PairingRepository @Inject constructor(
     suspend fun uploadLocationFix(payload: Map<String, Any?>): Boolean =
         withContext(Dispatchers.IO) {
             val serverUrl = getServerUrl()
+            if (!isServerUrlConfigured(serverUrl)) {
+                Timber.w("Location upload blocked: Server configuration missing")
+                return@withContext false
+            }
             val token = getAuthToken() ?: return@withContext false
             val res = apiClient.sendLocationFix(serverUrl, token, payload)
             res.success

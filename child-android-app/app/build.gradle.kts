@@ -28,7 +28,17 @@ android {
             useSupportLibrary = true
         }
 
-        val devServerUrl = project.findProperty("SERVER_BASE_URL") as String? ?: "https://jessica-williams-concern-chemical.trycloudflare.com"
+        val localProps = java.util.Properties()
+        val localPropsFile = rootProject.file("local.properties")
+        if (localPropsFile.exists()) {
+            localPropsFile.inputStream().use { localProps.load(it) }
+        }
+
+        val devServerUrl = project.findProperty("SERVER_BASE_URL") as String?
+            ?: localProps.getProperty("SERVER_BASE_URL")
+            ?: System.getenv("SERVER_BASE_URL")
+            ?: "https://unconfigured-dev-server.invalid"
+
         buildConfigField("String", "SERVER_BASE_URL", "\"$devServerUrl\"")
 
         buildConfigField("String", "ENVIRONMENT", "\"Development / Active Pairing\"")
