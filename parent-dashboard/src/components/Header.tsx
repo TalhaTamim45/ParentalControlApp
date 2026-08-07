@@ -4,8 +4,8 @@ import { Battery, BatteryCharging, ShieldAlert, Lock, Unlock, Smartphone, Wifi, 
 interface HeaderProps {
   deviceName: string;
   online: boolean;
-  battery: number;
-  charging: boolean;
+  battery?: number | null;
+  charging?: boolean;
   locked: boolean;
   onToggleLock: () => void;
   onLogout?: () => void;
@@ -56,9 +56,11 @@ export const Header: React.FC<HeaderProps> = ({
           {charging ? (
             <BatteryCharging className="w-4 h-4 text-emerald-400" />
           ) : (
-            <Battery className={`w-4 h-4 ${battery > 20 ? 'text-blue-400' : 'text-rose-400'}`} />
+            <Battery className={`w-4 h-4 ${battery != null && battery > 20 ? 'text-blue-400' : 'text-slate-500'}`} />
           )}
-          <span className="text-xs font-semibold text-slate-200">{battery}%</span>
+          <span className="text-xs font-semibold text-slate-200">
+            {battery != null ? `${battery}%` : '—'}
+          </span>
         </div>
 
         {/* Emergency Lock Phone Toggle */}

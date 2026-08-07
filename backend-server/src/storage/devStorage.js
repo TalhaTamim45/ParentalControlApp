@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 
 // Development-only JSON Storage with Atomic File Writes
-const DB_FILE = path.join(__dirname, '../../db.json');
+const DB_FILE = process.env.DB_FILE || path.join(__dirname, '../../db.json');
 
 let dbState = {
   _notice: "DEVELOPMENT-ONLY STORAGE. NOT FOR PRODUCTION USE.",

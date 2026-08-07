@@ -32,13 +32,28 @@ export const App: React.FC = () => {
       }
       const data = await res.json();
       if (data.success && Array.isArray(data.devices)) {
-        setRegisteredDevices(data.devices);
-        if (data.devices.length > 0) {
-          const first = data.devices[0];
-          setActiveDevice({ id: first.id, name: first.name, online: first.online });
-        } else {
-          setActiveDevice(null);
-        }
+        const devices: DeviceItem[] = data.devices;
+        setRegisteredDevices(devices);
+
+        // Deterministic Active Device Selection:
+        // Priority 1: Keep current selection if still valid
+        // Priority 2: Online device with most recent lastSeen
+        // Priority 3: Device with most recent lastSeen
+        // Priority 4: null if zero devices
+        setActiveDevice((prevActive) => {
+          if (devices.length === 0) return null;
+          if (prevActive && devices.some((d) => d.id === prevActive.id)) {
+            const updated = devices.find((d) => d.id === prevActive.id)!;
+            return { id: updated.id, name: updated.name, online: updated.online };
+          }
+          const onlineDevices = devices.filter((d) => d.online);
+          if (onlineDevices.length > 0) {
+            const bestOnline = [...onlineDevices].sort((a, b) => (b.lastSeen || 0) - (a.lastSeen || 0))[0];
+            return { id: bestOnline.id, name: bestOnline.name, online: true };
+          }
+          const bestRecent = [...devices].sort((a, b) => (b.lastSeen || 0) - (a.lastSeen || 0))[0];
+          return { id: bestRecent.id, name: bestRecent.name, online: bestRecent.online };
+        });
       }
     } catch (err) {
       console.error('Failed to fetch devices:', err);
@@ -48,29 +63,40 @@ export const App: React.FC = () => {
   // Fetch latest location fix for active device
   const fetchLatestLocation = useCallback(async () => {
     if (!parentToken || !activeDevice) return;
+    const targetDeviceId = activeDevice.id;
     try {
-      const res = await fetch(`${BACKEND_URL}/api/location/latest/${activeDevice.id}`, {
+      const res = await fetch(`${BACKEND_URL}/api/location/latest/${targetDeviceId}`, {
         headers: { 'x-parent-token': parentToken }
       });
       const data = await res.json();
-      if (data.success && data.location) {
-        setLatestLocation({
-          lat: data.location.latitude,
-          lng: data.location.longitude,
-          accuracy: data.location.horizontalAccuracyMeters,
-          speed: data.location.speedMetersPerSecond,
-          batteryPercent: data.location.batteryPercent,
-          isCharging: data.location.isCharging,
-          recordedAt: data.location.recordedAt,
-          receivedAt: data.location.receivedAt,
-          isStale: data.location.isStale,
-          provider: data.location.provider
-        });
-      }
+      // Verify response still matches current target device before applying state
+      setActiveDevice((current) => {
+        if (current && current.id === targetDeviceId && data.success && data.location) {
+          setLatestLocation({
+            lat: data.location.latitude,
+            lng: data.location.longitude,
+            accuracy: data.location.horizontalAccuracyMeters,
+            speed: data.location.speedMetersPerSecond,
+            batteryPercent: data.location.batteryPercent,
+            isCharging: data.location.isCharging,
+            recordedAt: data.location.recordedAt,
+            receivedAt: data.location.receivedAt,
+            isStale: data.location.isStale,
+            provider: data.location.provider
+          });
+        }
+        return current;
+      });
     } catch (err) {
       console.error('Failed to fetch latest location:', err);
     }
   }, [parentToken, activeDevice]);
+
+  // Handle explicit device selection from UI
+  const handleSelectDevice = useCallback((device: DeviceItem) => {
+    setActiveDevice({ id: device.id, name: device.name, online: device.online });
+    setLatestLocation(null); // Clear telemetry belonging to previous device
+  }, []);
 
   // Handle Socket & Device sync
   useEffect(() => {
@@ -113,15 +139,21 @@ export const App: React.FC = () => {
     newSocket.on('location_changed', (data) => {
       console.log('[Socket] Received real-time location_changed:', data);
       if (data && data.latitude && data.longitude) {
-        setLatestLocation({
-          lat: data.latitude,
-          lng: data.longitude,
-          accuracy: data.horizontalAccuracyMeters,
-          batteryPercent: data.batteryPercent,
-          isCharging: data.isCharging,
-          recordedAt: data.recordedAt,
-          receivedAt: data.receivedAt,
-          isStale: false
+        // Apply only if incoming socket event matches currently targeted device
+        setActiveDevice((current) => {
+          if (current && data.deviceId && data.deviceId === current.id) {
+            setLatestLocation({
+              lat: data.latitude,
+              lng: data.longitude,
+              accuracy: data.horizontalAccuracyMeters,
+              batteryPercent: data.batteryPercent,
+              isCharging: data.isCharging,
+              recordedAt: data.recordedAt,
+              receivedAt: data.receivedAt,
+              isStale: false
+            });
+          }
+          return current;
         });
       }
     });
@@ -133,11 +165,10 @@ export const App: React.FC = () => {
 
   // Fetch location on tab or device change
   useEffect(() => {
-    if (activeTab === 'map' && activeDevice) {
+    if (activeDevice) {
       fetchLatestLocation();
     }
   }, [activeTab, activeDevice, fetchLatestLocation]);
-
 
   const handleLogout = () => {
     if (parentToken) {
@@ -164,8 +195,8 @@ export const App: React.FC = () => {
       <Header
         deviceName={activeDevice ? activeDevice.name : "No Device Paired"}
         online={activeDevice ? activeDevice.online : false}
-        battery={0}
-        charging={false}
+        battery={latestLocation?.batteryPercent}
+        charging={latestLocation?.isCharging}
         locked={false}
         onToggleLock={handleToggleLock}
         onLogout={handleLogout}
@@ -249,7 +280,9 @@ export const App: React.FC = () => {
             devices={registeredDevices}
             token={parentToken}
             backendUrl={BACKEND_URL}
+            activeDeviceId={activeDevice ? activeDevice.id : null}
             onRefresh={fetchRegisteredDevices}
+            onSelectDevice={handleSelectDevice}
           />
         )}
 

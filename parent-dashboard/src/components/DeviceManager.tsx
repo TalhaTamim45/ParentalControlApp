@@ -13,10 +13,12 @@ interface DeviceManagerProps {
   devices: DeviceItem[];
   token: string;
   backendUrl: string;
+  activeDeviceId: string | null;
   onRefresh: () => void;
+  onSelectDevice: (device: DeviceItem) => void;
 }
 
-export const DeviceManager: React.FC<DeviceManagerProps> = ({ devices, token, backendUrl, onRefresh }) => {
+export const DeviceManager: React.FC<DeviceManagerProps> = ({ devices, token, backendUrl, activeDeviceId, onRefresh, onSelectDevice }) => {
   const [pairingCode, setPairingCode] = useState<string | null>(null);
   const [codeExpiresAt, setCodeExpiresAt] = useState<number | null>(null);
   const [secondsLeft, setSecondsLeft] = useState<number>(0);
@@ -236,19 +238,32 @@ export const DeviceManager: React.FC<DeviceManagerProps> = ({ devices, token, ba
                 )}
               </div>
 
-              <div className="pt-2 flex justify-end">
+              <div className="pt-2 flex items-center justify-between border-t border-slate-800/80">
+                {activeDeviceId === d.id ? (
+                  <span className="px-2.5 py-1 bg-blue-500/10 border border-blue-500/30 text-blue-400 text-[11px] font-bold rounded-lg flex items-center gap-1">
+                    CURRENT TARGET
+                  </span>
+                ) : (
+                  <button
+                    onClick={() => onSelectDevice(d)}
+                    className="px-3 py-1.5 bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-500/30 text-xs font-semibold rounded-lg transition"
+                  >
+                    SELECT DEVICE
+                  </button>
+                )}
+
                 {unpairingId === d.id ? (
                   <div className="flex items-center gap-2">
-                    <span className="text-xs text-rose-400 font-semibold">Unpair device?</span>
+                    <span className="text-xs text-rose-400 font-semibold">Unpair?</span>
                     <button
                       onClick={() => handleUnpair(d.id)}
                       className="px-2.5 py-1.5 bg-rose-600 hover:bg-rose-500 text-white font-semibold text-xs rounded-lg transition"
                     >
-                      Yes, Revoke
+                      Yes
                     </button>
                     <button
                       onClick={() => setUnpairingId(null)}
-                      className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs rounded-lg transition"
+                      className="px-2 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs rounded-lg transition"
                     >
                       Cancel
                     </button>
@@ -258,7 +273,7 @@ export const DeviceManager: React.FC<DeviceManagerProps> = ({ devices, token, ba
                     onClick={() => setUnpairingId(d.id)}
                     className="text-xs text-rose-400 hover:text-rose-300 flex items-center gap-1 transition"
                   >
-                    <Trash2 className="w-3.5 h-3.5" /> Unpair Device
+                    <Trash2 className="w-3.5 h-3.5" /> Unpair
                   </button>
                 )}
               </div>

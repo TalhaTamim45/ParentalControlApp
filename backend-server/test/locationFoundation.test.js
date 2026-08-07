@@ -1,5 +1,6 @@
 const assert = require('assert');
 const http = require('http');
+const fs = require('fs');
 const env = require('../src/config/env');
 const { server } = require('../server');
 const { getDb, saveDb } = require('../src/storage/devStorage');
@@ -256,6 +257,9 @@ async function runLocationTests() {
     process.exitCode = 1;
   } finally {
     server.close();
+    if (process.env.DB_FILE && fs.existsSync(process.env.DB_FILE)) {
+      try { fs.unlinkSync(process.env.DB_FILE); } catch (_) {}
+    }
   }
 }
 
