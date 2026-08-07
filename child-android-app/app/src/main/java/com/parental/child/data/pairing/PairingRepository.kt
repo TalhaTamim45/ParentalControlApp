@@ -95,7 +95,21 @@ class PairingRepository @Inject constructor(
                 return@withContext false
             }
             val token = getAuthToken() ?: return@withContext false
+
+            val fullEventId = payload["eventId"]?.toString() ?: "unknown"
+            val sanitizedEventId = if (fullEventId.length > 12) {
+                fullEventId.take(8) + "..." + fullEventId.takeLast(4)
+            } else {
+                fullEventId
+            }
+
+            Timber.i("Location upload started | event=%s", sanitizedEventId)
             val res = apiClient.sendLocationFix(serverUrl, token, payload)
+            if (res.success) {
+                Timber.i("Location upload completed | event=%s | status=200", sanitizedEventId)
+            } else {
+                Timber.w("Location upload failed | event=%s | status=%s", sanitizedEventId, res.error ?: "unknown")
+            }
             res.success
         }
 }
