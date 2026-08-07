@@ -15,6 +15,7 @@ const BACKEND_URL = (import.meta as any).env?.VITE_BACKEND_URL || window.locatio
 export const App: React.FC = () => {
   const [parentToken, setParentToken] = useState<string | null>(() => sessionStorage.getItem('parent_token'));
   const [socket, setSocket] = useState<Socket | null>(null);
+  const [socketConnected, setSocketConnected] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<NavTab>('home');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -183,6 +184,21 @@ export const App: React.FC = () => {
 
     setSocket(newSocket);
 
+    newSocket.on('connect', () => {
+      console.log('[Socket] Connected as authenticated Parent');
+      setSocketConnected(true);
+    });
+
+    newSocket.on('disconnect', () => {
+      console.log('[Socket] Disconnected from server');
+      setSocketConnected(false);
+    });
+
+    newSocket.on('connect_error', (err) => {
+      console.error('[Socket] Connection error:', err.message);
+      setSocketConnected(false);
+    });
+
     newSocket.on('device_presence_changed', ({ deviceId, online, lastSeen }) => {
       setRegisteredDevices((prev) =>
         prev.map((d) => (d.id === deviceId ? { ...d, online, lastSeen: lastSeen || Date.now() } : d))
@@ -258,11 +274,12 @@ export const App: React.FC = () => {
 
       {/* Main Desktop Container */}
       <div className="flex-1 flex flex-col min-w-0 lg:pl-64">
-        {/* Top Header */}
+        {/* Top Header with Vibrant Connection Status */}
         <TopHeader
           devices={registeredDevices}
           activeDevice={activeDevice}
           currentLocation={latestLocation}
+          socketConnected={socketConnected}
           onSelectDevice={handleSelectDevice}
           onOpenMobileMenu={() => setIsMobileMenuOpen(true)}
           onLockDevice={handleLockDevice}
@@ -278,6 +295,7 @@ export const App: React.FC = () => {
             <HomeOverview
               activeDevice={activeDevice}
               currentLocation={latestLocation}
+              socketConnected={socketConnected}
               onNavigateToLocation={() => setActiveTab('location')}
               onNavigateToDevices={() => setActiveTab('devices')}
               onLockDevice={handleLockDevice}
@@ -307,6 +325,7 @@ export const App: React.FC = () => {
             <DiagnosticsPage
               devices={registeredDevices}
               activeDevice={activeDevice}
+              socketConnected={socketConnected}
             />
           )}
 

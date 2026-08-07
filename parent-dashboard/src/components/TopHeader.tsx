@@ -9,11 +9,10 @@ import {
   ChevronDown, 
   Lock, 
   RefreshCw, 
-  Bell, 
-  CheckCircle2, 
-  Clock 
+  CheckCircle2,
+  Radio
 } from 'lucide-react';
-import { LocationFix } from './LiveMap';
+import { LocationFix } from './LocationPage';
 
 export interface Device {
   id: string;
@@ -28,22 +27,22 @@ interface TopHeaderProps {
   devices: Device[];
   activeDevice: Device | null;
   currentLocation: LocationFix | null;
+  socketConnected?: boolean;
   onSelectDevice: (deviceId: string) => void;
   onOpenMobileMenu: () => void;
   onLockDevice: () => void;
   onRefresh: () => void;
-  unreadNotificationsCount?: number;
 }
 
 export const TopHeader: React.FC<TopHeaderProps> = ({
   devices,
   activeDevice,
   currentLocation,
+  socketConnected = true,
   onSelectDevice,
   onOpenMobileMenu,
   onLockDevice,
-  onRefresh,
-  unreadNotificationsCount = 0
+  onRefresh
 }) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
@@ -65,7 +64,7 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
         {/* Mobile Sidebar Toggle */}
         <button
           onClick={onOpenMobileMenu}
-          className="p-2 text-slate-500 hover:text-slate-900 lg:hidden rounded-lg hover:bg-slate-100 transition"
+          className="p-2 text-slate-500 hover:text-slate-900 lg:hidden rounded-xl hover:bg-slate-100 transition"
           aria-label="Open navigation menu"
         >
           <Menu className="w-5 h-5" />
@@ -76,15 +75,15 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
           {activeDevice ? (
             <button
               onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-              className="flex items-center gap-3 px-3 py-1.5 rounded-xl border border-slate-200 hover:border-blue-300 hover:bg-slate-50 transition text-left group"
+              className="flex items-center gap-3 px-3.5 py-1.5 rounded-xl border border-slate-200 hover:border-blue-300 hover:bg-slate-50/80 transition text-left group shadow-2xs"
             >
-              <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-xs">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center font-bold text-xs shadow-xs">
                 <Smartphone className="w-4 h-4" />
               </div>
               <div className="hidden sm:block">
                 <div className="flex items-center gap-2">
                   <span className="font-bold text-slate-900 text-xs">{activeDevice.name}</span>
-                  <span className={`w-2 h-2 rounded-full ${activeDevice.online ? 'bg-emerald-500' : 'bg-slate-300'}`} />
+                  <span className={`w-2.5 h-2.5 rounded-full ${activeDevice.online ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300'}`} />
                 </div>
                 <p className="text-[10px] text-slate-400 font-medium">
                   Synced: {formatLastSeen(activeDevice.lastSeen)}
@@ -115,8 +114,8 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
                       key={device.id}
                       onClick={() => onSelectDevice(device.id)}
                       className={`
-                        w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold text-left transition
-                        ${isSelected ? 'bg-blue-50 text-blue-600' : 'hover:bg-slate-50 text-slate-700'}
+                        w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold text-left transition
+                        ${isSelected ? 'bg-blue-50 text-blue-600 font-bold' : 'hover:bg-slate-50 text-slate-700'}
                       `}
                     >
                       <div className="flex items-center gap-2.5 truncate">
@@ -136,13 +135,23 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
         </div>
       </div>
 
-      {/* Top Header Telemetry & Controls */}
-      <div className="flex items-center gap-2 sm:gap-4">
+      {/* Top Header Telemetry & Connection Indicators */}
+      <div className="flex items-center gap-2 sm:gap-3">
+        {/* Real-time Socket Server Connection Badge */}
+        <span className={`px-2.5 py-1 rounded-lg text-xs font-bold flex items-center gap-1.5 border shadow-2xs ${
+          socketConnected 
+            ? 'bg-blue-50 text-blue-700 border-blue-200' 
+            : 'bg-amber-50 text-amber-700 border-amber-200'
+        }`} title={socketConnected ? 'Connected to backend server' : 'Reconnecting to server...'}>
+          <Radio className={`w-3.5 h-3.5 ${socketConnected ? 'text-blue-600 animate-pulse' : 'text-amber-500'}`} />
+          <span className="hidden lg:inline">{socketConnected ? 'Live Connection' : 'Connecting...'}</span>
+        </span>
+
         {/* Device Status Pills */}
         {activeDevice && (
           <div className="hidden md:flex items-center gap-2 text-xs">
-            {/* Connection Status */}
-            <span className={`px-2.5 py-1 rounded-lg font-semibold flex items-center gap-1.5 border ${
+            {/* Device Online/Offline Badge */}
+            <span className={`px-2.5 py-1 rounded-lg font-bold flex items-center gap-1.5 border shadow-2xs ${
               activeDevice.online 
                 ? 'bg-emerald-50 text-emerald-700 border-emerald-200/80' 
                 : 'bg-slate-100 text-slate-600 border-slate-200'
@@ -160,11 +169,11 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
               )}
             </span>
 
-            {/* Battery Telemetry */}
-            <span className="px-2.5 py-1 rounded-lg font-semibold bg-slate-50 text-slate-700 border border-slate-200 flex items-center gap-1.5">
+            {/* Battery & Charging Telemetry */}
+            <span className="px-2.5 py-1 rounded-lg font-bold bg-slate-50 text-slate-700 border border-slate-200 flex items-center gap-1.5 shadow-2xs">
               <Battery className="w-3.5 h-3.5 text-slate-500" />
               <span>{activeBattery !== undefined ? `${activeBattery}%` : '—'}</span>
-              {activeCharging && <Zap className="w-3 h-3 text-amber-500 fill-current" />}
+              {activeCharging && <Zap className="w-3.5 h-3.5 text-amber-500 fill-current" />}
             </span>
           </div>
         )}
@@ -173,7 +182,7 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
         <div className="flex items-center gap-2">
           <button
             onClick={onRefresh}
-            className="p-2 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition"
+            className="p-2 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition border border-slate-200/60"
             title="Refresh status"
           >
             <RefreshCw className="w-4 h-4" />
@@ -182,10 +191,10 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
           {activeDevice && (
             <button
               onClick={onLockDevice}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-bold rounded-xl border border-rose-200/60 transition shadow-2xs"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl shadow-xs transition"
             >
               <Lock className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Lock Device</span>
+              <span className="hidden sm:inline">Lock Screen</span>
             </button>
           )}
         </div>

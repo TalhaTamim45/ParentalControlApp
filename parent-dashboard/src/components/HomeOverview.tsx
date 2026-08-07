@@ -11,14 +11,16 @@ import {
   Activity, 
   Bell, 
   ChevronRight,
-  Sparkles
+  Sparkles,
+  Radio
 } from 'lucide-react';
 import { Device } from './TopHeader';
-import { LocationFix } from './LiveMap';
+import { LocationFix } from './LocationPage';
 
 interface HomeOverviewProps {
   activeDevice: Device | null;
   currentLocation: LocationFix | null;
+  socketConnected?: boolean;
   onNavigateToLocation: () => void;
   onNavigateToDevices: () => void;
   onLockDevice: () => void;
@@ -27,6 +29,7 @@ interface HomeOverviewProps {
 export const HomeOverview: React.FC<HomeOverviewProps> = ({
   activeDevice,
   currentLocation,
+  socketConnected = true,
   onNavigateToLocation,
   onNavigateToDevices,
   onLockDevice
@@ -48,18 +51,18 @@ export const HomeOverview: React.FC<HomeOverviewProps> = ({
         <div className="absolute right-0 top-0 bottom-0 opacity-10 flex items-center pr-12 pointer-events-none">
           <ShieldCheck className="w-64 h-64 text-white" />
         </div>
-        <div className="relative z-10 max-w-2xl space-y-2">
+        <div className="relative z-10 max-w-2xl space-y-3">
           <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/10 backdrop-blur-md rounded-full text-xs font-semibold text-blue-100">
             <Sparkles className="w-3.5 h-3.5" />
             <span>Parent Shield Active Protection</span>
           </div>
           <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-            {activeDevice ? `Overview for ${activeDevice.name}` : 'Welcome to Parent Shield'}
+            {activeDevice ? `Protection Dashboard for ${activeDevice.name}` : 'Welcome to Parent Shield'}
           </h2>
           <p className="text-blue-100 text-sm leading-relaxed">
             {activeDevice 
-              ? 'Real-time device status and location telemetry at a glance.' 
-              : 'Select or pair a child device to view protection metrics.'}
+              ? 'Real-time location, hardware metrics, and instant screen safety controls.' 
+              : 'Select or pair a child device to view real-time protection metrics.'}
           </p>
         </div>
       </div>
@@ -108,7 +111,7 @@ export const HomeOverview: React.FC<HomeOverviewProps> = ({
           </button>
         </div>
 
-        {/* Device Health Status Card */}
+        {/* Device Health & Connection Status Card */}
         <div className="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-xs flex flex-col justify-between space-y-4 hover:shadow-md transition">
           <div className="flex items-start justify-between">
             <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold">
@@ -130,8 +133,15 @@ export const HomeOverview: React.FC<HomeOverviewProps> = ({
           </div>
 
           <div className="space-y-2">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Device Telemetry</h3>
-            <div className="flex items-center gap-4 text-xs font-medium text-slate-700">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Connection Telemetry</h3>
+            
+            {/* Live Socket Status */}
+            <div className="flex items-center gap-2 text-xs font-semibold text-slate-700">
+              <Radio className={`w-3.5 h-3.5 ${socketConnected ? 'text-blue-600 animate-pulse' : 'text-amber-500'}`} />
+              <span>Server Connection: {socketConnected ? 'Connected (Live)' : 'Disconnected'}</span>
+            </div>
+
+            <div className="flex items-center gap-4 text-xs font-medium text-slate-700 pt-1">
               <div className="flex items-center gap-1.5">
                 <Battery className="w-4 h-4 text-slate-400" />
                 <span>Battery: {activeDevice?.batteryPercent !== undefined ? `${activeDevice.batteryPercent}%` : '—'}</span>
@@ -175,31 +185,8 @@ export const HomeOverview: React.FC<HomeOverviewProps> = ({
             className="w-full py-2.5 px-4 bg-rose-600 hover:bg-rose-700 disabled:bg-slate-200 text-white font-bold text-xs rounded-xl shadow-xs transition flex items-center justify-center gap-2"
           >
             <Lock className="w-4 h-4" />
-            <span>Lock Device Now</span>
+            <span>Lock Screen Now</span>
           </button>
-        </div>
-      </div>
-
-      {/* Feature Coming Soon Info Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
-        <div className="bg-slate-50 rounded-2xl p-6 border border-slate-200/60 space-y-2">
-          <div className="flex items-center gap-2 text-slate-400">
-            <Clock className="w-4 h-4" />
-            <h4 className="text-xs font-bold uppercase tracking-wider">Screen Time & Usage</h4>
-          </div>
-          <p className="text-xs text-slate-500 leading-relaxed">
-            Screen time limits and app usage reporting will become available once enabled in an authorized release.
-          </p>
-        </div>
-
-        <div className="bg-slate-50 rounded-2xl p-6 border border-slate-200/60 space-y-2">
-          <div className="flex items-center gap-2 text-slate-400">
-            <Bell className="w-4 h-4" />
-            <h4 className="text-xs font-bold uppercase tracking-wider">Automated Safety Geofences</h4>
-          </div>
-          <p className="text-xs text-slate-500 leading-relaxed">
-            Geofence entry/exit boundary monitoring will become available when location Milestone 1.3 is authorized.
-          </p>
         </div>
       </div>
     </div>

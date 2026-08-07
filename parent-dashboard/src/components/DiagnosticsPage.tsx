@@ -1,15 +1,17 @@
 import React from 'react';
-import { Terminal, Shield, HardDrive, Wifi, Activity, Cpu } from 'lucide-react';
+import { Terminal, HardDrive, Cpu, Radio, ShieldCheck, Database } from 'lucide-react';
 import { Device } from './TopHeader';
 
 interface DiagnosticsPageProps {
   devices: Device[];
   activeDevice: Device | null;
+  socketConnected?: boolean;
 }
 
 export const DiagnosticsPage: React.FC<DiagnosticsPageProps> = ({
   devices,
-  activeDevice
+  activeDevice,
+  socketConnected = true
 }) => {
   return (
     <div className="space-y-6 max-w-6xl mx-auto">
@@ -35,7 +37,7 @@ export const DiagnosticsPage: React.FC<DiagnosticsPageProps> = ({
             <span>Active Target State</span>
           </h3>
 
-          <div className="space-y-2">
+          <div className="space-y-2.5">
             <div>
               <span className="text-slate-500 block">Sanitized Device ID:</span>
               <span className="text-slate-200 font-semibold">{activeDevice ? `${activeDevice.id.substring(0, 8)}...${activeDevice.id.slice(-4)}` : 'None'}</span>
@@ -46,7 +48,7 @@ export const DiagnosticsPage: React.FC<DiagnosticsPageProps> = ({
             </div>
             <div>
               <span className="text-slate-500 block">Online Status:</span>
-              <span className={activeDevice?.online ? 'text-emerald-400' : 'text-slate-400'}>
+              <span className={activeDevice?.online ? 'text-emerald-400 font-bold' : 'text-slate-400'}>
                 {activeDevice?.online ? 'CONNECTED' : 'DISCONNECTED'}
               </span>
             </div>
@@ -57,14 +59,20 @@ export const DiagnosticsPage: React.FC<DiagnosticsPageProps> = ({
           </div>
         </div>
 
-        {/* Database Record Inventory Count */}
+        {/* Database & Socket Connection Diagnostics */}
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 text-xs text-slate-300 space-y-4">
           <h3 className="text-sm font-bold text-indigo-400 flex items-center gap-2 border-b border-slate-800 pb-3">
-            <HardDrive className="w-4 h-4" />
-            <span>Backend Persistence Summary</span>
+            <Radio className="w-4 h-4" />
+            <span>Socket.io & Persistence Diagnostics</span>
           </h3>
 
-          <div className="space-y-2">
+          <div className="space-y-2.5">
+            <div>
+              <span className="text-slate-500 block">Parent Socket Connection:</span>
+              <span className={socketConnected ? 'text-emerald-400 font-bold' : 'text-rose-400 font-bold'}>
+                {socketConnected ? 'CONNECTED (HTTP/1.1 WebSocket)' : 'DISCONNECTED'}
+              </span>
+            </div>
             <div>
               <span className="text-slate-500 block">Total Database Records:</span>
               <span className="text-slate-200 font-semibold">{devices.length} Devices</span>
@@ -76,10 +84,6 @@ export const DiagnosticsPage: React.FC<DiagnosticsPageProps> = ({
             <div>
               <span className="text-slate-500 block">Storage Engine:</span>
               <span className="text-slate-200">DevStorage JSON (db.json)</span>
-            </div>
-            <div>
-              <span className="text-slate-500 block">Rest API Base:</span>
-              <span className="text-slate-200">http://localhost:4000/api</span>
             </div>
           </div>
         </div>
