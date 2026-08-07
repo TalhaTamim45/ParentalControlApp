@@ -1,5 +1,7 @@
+import java.io.FileInputStream
 import java.text.SimpleDateFormat
 import java.util.Date
+import java.util.Properties
 
 plugins {
     alias(libs.plugins.android.application)
@@ -28,10 +30,12 @@ android {
             useSupportLibrary = true
         }
 
-        val localProps = java.util.Properties()
+        val localProps = Properties()
         val localPropsFile = rootProject.file("local.properties")
         if (localPropsFile.exists()) {
-            localPropsFile.inputStream().use { localProps.load(it) }
+            FileInputStream(localPropsFile).use { stream ->
+                localProps.load(stream)
+            }
         }
 
         val devServerUrl = project.findProperty("SERVER_BASE_URL") as String?
