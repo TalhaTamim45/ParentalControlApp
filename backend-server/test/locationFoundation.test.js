@@ -1,6 +1,24 @@
+const path = require('path');
+const os = require('os');
+const fs = require('fs');
+
+// Hardened Test Isolation: Override DB_FILE unconditionally to a unique test-owned temp directory
+const originalDbFileEnv = process.env.DB_FILE;
+const devDbPath = path.resolve(__dirname, '../db.json');
+
+const testTempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'pca-test-loc-'));
+const isolatedTestDbPath = path.resolve(testTempDir, 'isolated_test_db.json');
+
+// Safety Guard: Abort immediately if isolated test DB path resolves to real development db.json
+if (isolatedTestDbPath === devDbPath) {
+  console.error('CRITICAL SAFETY FAILURE: Test DB path matches development db.json! Aborting.');
+  process.exit(1);
+}
+
+process.env.DB_FILE = isolatedTestDbPath;
+
 const assert = require('assert');
 const http = require('http');
-const fs = require('fs');
 const env = require('../src/config/env');
 const { server } = require('../server');
 const { getDb, saveDb } = require('../src/storage/devStorage');
@@ -257,8 +275,17 @@ async function runLocationTests() {
     process.exitCode = 1;
   } finally {
     server.close();
-    if (process.env.DB_FILE && fs.existsSync(process.env.DB_FILE)) {
-      try { fs.unlinkSync(process.env.DB_FILE); } catch (_) {}
+    // Strict Cleanup Ownership: Delete ONLY the testTempDir created specifically for this test run
+    if (testTempDir && fs.existsSync(testTempDir)) {
+      try {
+        fs.rmSync(testTempDir, { recursive: true, force: true });
+      } catch (_) {}
+    }
+    // Restore original DB_FILE environment variable
+    if (originalDbFileEnv !== undefined) {
+      process.env.DB_FILE = originalDbFileEnv;
+    } else {
+      delete process.env.DB_FILE;
     }
   }
 }
